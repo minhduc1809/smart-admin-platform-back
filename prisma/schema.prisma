@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// ENUMS
+// -----------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  MANAGER
+  USER
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum JobType {
+  IMPORT
+  EXPORT
+  EMAIL
+  NOTIFICATION
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+// -----------------------------------------------------------------------------
+// MODELS
+// -----------------------------------------------------------------------------
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  username     String    @unique
+  passwordHash String
+  role         Role      @default(USER)
+  firstName    String?
+  lastName     String?
+  picture      String?
+  isActive     Boolean   @default(true)
+  
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  refreshTokens          RefreshToken[]
+  forms                  Form[]
+  submissions            Submission[]
+  workflowDefinitions    WorkflowDefinition[]
+  notifications          Notification[]
+  jobRecords             JobRecord[]
+  fileRecords            FileRecord[]
+
+  @@map("users")
+  @@index([email])
+  @@index([role])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+  @@index([userId])
+}
+
+model Form {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  schema      Json      // Form fields schema
+  settings    Json      // Form configurations
+  isActive    Boolean   @default(true) @map("is_active")
+  
+  createdBy   String    @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  user                 User                 @relation(fields: [createdBy], references: [id])
+  submissions          Submission[]
+  workflowDefinitions  WorkflowDefinition[]
+
+  @@map("forms")
+  @@index([createdBy])
+}
+
+model Submission {
+  id          String           @id @default(uuid())
+  formId      String           @map("form_id")
+  data        Json             // Actual submitted data
+  status      SubmissionStatus @default(DRAFT)
+  submittedBy String           @map("submitted_by")
+
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  form        Form               @relation(fields: [formId], references: [id], onDelete: Restrict)
+  user        User               @relation(fields: [submittedBy], references: [id])
+  workflows   WorkflowInstance[]
+
+  @@map("submissions")
+  @@index([formId])
+  @@index([submittedBy])
+}
+
+model WorkflowDefinition {
+  id          String   @id @default(uuid())
+  name        String
+  config      Json     // Steps and transitions
+  formId      String?  @map("form_id")
+  createdBy   String   @map("created_by")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  form        Form?              @relation(fields: [formId], references: [id], onDelete: SetNull)
+  user        User               @relation(fields: [createdBy], references: [id])
+  instances   WorkflowInstance[]
+
+  @@map("workflow_definitions")
+  @@index([formId])
+}
+
+model WorkflowInstance {
+  id           String   @id @default(uuid())
+  definitionId String   @map("definition_id")
+  submissionId String   @map("submission_id")
+  currentStep  String   @map("current_step")
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  definition   WorkflowDefinition @relation(fields: [definitionId], references: [id])
+  submission   Submission         @relation(fields: [submissionId], references: [id])
+  histories    WorkflowHistory[]
+
+  @@map("workflow_instances")
+  @@index([definitionId])
+  @@index([submissionId])
+}
+
+model WorkflowHistory {
+  id         String   @id @default(uuid())
+  instanceId String   @map("instance_id")
+  fromStep   String?  @map("from_step")
+  toStep     String   @map("to_step")
+  action     String   // E.g., SUBMITTED, APPROVED, REJECTED
+  actorId    String   @map("actor_id")
+  comment    String?
+
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  instance   WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@map("workflow_histories")
+  @@index([instanceId])
+}
+
+model FileRecord {
+  id           String   @id @default(uuid())
+  originalName String   @map("original_name")
+  storedName   String   @map("stored_name")
+  storedPath   String   @map("stored_path")
+  mimeType     String   @map("mime_type")
+  size         Int
+  uploadedBy   String   @map("uploaded_by")
+
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [uploadedBy], references: [id])
+
+  @@map("file_records")
+}
+
+model JobRecord {
+  id        String    @id @default(uuid())
+  type      JobType
+  status    JobStatus @default(PENDING)
+  progress  Int       @default(0)
+  result    Json?
+  error     String?
+  createdBy String    @map("created_by")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [createdBy], references: [id])
+
+  @@map("job_records")
+  @@index([status])
+  @@index([type])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String
+  content   String
+  type      String   // e.g. "INFO", "SUCCESS", "WARNING"
+  read      Boolean  @default(false)
+  metadata  Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+  @@index([userId, read])
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}

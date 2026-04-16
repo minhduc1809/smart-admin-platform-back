@@ -1,0 +1,60 @@
+{
+  "auth": {
+    "LOGIN_SUCCESS": "Đăng nhập thành công",
+    "INVALID_CREDENTIALS": "Email hoặc mật khẩu không chính xác",
+    "INVALID_REFRESH_TOKEN": "Phiên đăng nhập không hợp lệ hoặc đã hết hạn",
+    "TOKEN_EXPIRED": "Token đã hết hạn",
+    "UNAUTHORIZED": "Không có quyền truy cập",
+    "LOGOUT_SUCCESS": "Đăng xuất thành công",
+    "REGISTER_SUCCESS": "Đăng ký thành công"
+  },
+  "user": {
+    "NOT_FOUND": "Không tìm thấy người dùng",
+    "CREATED": "Tạo người dùng thành công",
+    "UPDATED": "Cập nhật người dùng thành công",
+    "DELETED": "Đã xóa người dùng",
+    "EMAIL_EXISTS": "Email này đã được sử dụng",
+    "USERNAME_EXISTS": "Tên đăng nhập đã tồn tại"
+  },
+  "form": {
+    "NOT_FOUND": "Không tìm thấy biểu mẫu",
+    "CREATED": "Tạo biểu mẫu thành công",
+    "UPDATED": "Cập nhật biểu mẫu thành công"
+  },
+  "submission": {
+    "NOT_FOUND": "Không tìm thấy dữ liệu đã nộp",
+    "SUBMITTED": "Nộp dữ liệu biểu mẫu thành công"
+  },
+  "workflow": {
+    "INSTANCE_NOT_FOUND": "Không tìm thấy luồng xử lý",
+    "INVALID_TRANSITION": "Thao tác chuyển bước không hợp lệ",
+    "NOT_ALLOWED": "Bạn không có quyền thực hiện thao tác này",
+    "COMMENT_REQUIRED": "Vui lòng nhập lý do / ghi chú cho thao tác này"
+  },
+  "file": {
+    "UPLOAD_SUCCESS": "Tải tệp lên thành công",
+    "NOT_FOUND": "Không tìm thấy tệp",
+    "TOO_LARGE": "Kích thước tệp vượt quá giới hạn cho phép",
+    "PROCESSING": "Đang xử lý tệp đồ hoạ/dữ liệu"
+  },
+  "notification": {
+    "NOT_FOUND": "Không tìm thấy thông báo",
+    "MARK_READ_PROCESS": "Đã đánh dấu là đã đọc"
+  },
+  "validation": {
+    "REQUIRED": "Trường này là bắt buộc",
+    "INVALID": "Dữ liệu không hợp lệ",
+    "MIN_LENGTH": "Độ dài nhỏ hơn mức tối thiểu",
+    "MAX_LENGTH": "Độ dài vượt quá mức tối đa",
+    "MUST_BE_STRING": "Bắt buộc phải là chuỗi văn bản",
+    "MUST_BE_NUMBER": "Bắt buộc phải là số tròn",
+    "INVALID_DATE": "Định dạng ngày tháng không hợp lệ",
+    "INVALID_OPTION": "Lựa chọn không tồn tại trong danh sách"
+  },
+  "error": {
+    "INTERNAL": "Lỗi hệ thống ngoại lệ",
+    "FORBIDDEN": "Bạn bị chặn quyền truy cập vào tài nguyên này",
+    "NOT_FOUND": "Không tìm thấy tài nguyên yêu cầu",
+    "CONFLICT": "Xung đột dữ liệu hệ thống"
+  }
+}

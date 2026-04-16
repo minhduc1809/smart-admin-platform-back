@@ -1,0 +1,60 @@
+{
+  "auth": {
+    "LOGIN_SUCCESS": "Login successful",
+    "INVALID_CREDENTIALS": "Email or password incorrect",
+    "INVALID_REFRESH_TOKEN": "Session invalid or expired",
+    "TOKEN_EXPIRED": "Token has expired",
+    "UNAUTHORIZED": "Unauthorized access",
+    "LOGOUT_SUCCESS": "Logged out successfully",
+    "REGISTER_SUCCESS": "Registered successfully"
+  },
+  "user": {
+    "NOT_FOUND": "User not found",
+    "CREATED": "User created successfully",
+    "UPDATED": "User updated successfully",
+    "DELETED": "User deleted",
+    "EMAIL_EXISTS": "Email is already taken",
+    "USERNAME_EXISTS": "Username is already taken"
+  },
+  "form": {
+    "NOT_FOUND": "Form not found",
+    "CREATED": "Form created successfully",
+    "UPDATED": "Form updated successfully"
+  },
+  "submission": {
+    "NOT_FOUND": "Submission not found",
+    "SUBMITTED": "Form submitted successfully"
+  },
+  "workflow": {
+    "INSTANCE_NOT_FOUND": "Workflow instance not found",
+    "INVALID_TRANSITION": "Invalid workflow transition",
+    "NOT_ALLOWED": "You are not allowed to perform this action",
+    "COMMENT_REQUIRED": "A comment is required for this action"
+  },
+  "file": {
+    "UPLOAD_SUCCESS": "File uploaded successfully",
+    "NOT_FOUND": "File not found",
+    "TOO_LARGE": "File size exceeds the allowed limit",
+    "PROCESSING": "Processing file"
+  },
+  "notification": {
+    "NOT_FOUND": "Notification not found",
+    "MARK_READ_PROCESS": "Marked as read"
+  },
+  "validation": {
+    "REQUIRED": "This field is required",
+    "INVALID": "Invalid data",
+    "MIN_LENGTH": "Length is below the minimum",
+    "MAX_LENGTH": "Length exceeds the maximum",
+    "MUST_BE_STRING": "Must be a string",
+    "MUST_BE_NUMBER": "Must be a number",
+    "INVALID_DATE": "Invalid date format",
+    "INVALID_OPTION": "Selection not in allowed options"
+  },
+  "error": {
+    "INTERNAL": "Internal server error",
+    "FORBIDDEN": "Forbidden access to this resource",
+    "NOT_FOUND": "Requested resource not found",
+    "CONFLICT": "Data conflict error"
+  }
+}
