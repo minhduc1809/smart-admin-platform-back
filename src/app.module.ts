@@ -11,6 +11,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { KeycloakSyncGuard } from './common/guards/keycloak-sync.guard';
 
 @Module({
   imports: [
@@ -41,6 +42,10 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: KeycloakSyncGuard,
     },
   ],
 })
