@@ -1,6 +1,30 @@
 version: '3.8'
 
 services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: saas_backend_dev
+    restart: always
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres123@database:5432/saas_db?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "3000:3000"
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - saas_network
+
   database:
     image: postgres:16-alpine
     container_name: saas_postgres_dev
@@ -76,6 +100,7 @@ services:
         condition: service_healthy
 
 volumes:
+  backend_uploads:
   postgres_data:
   redis_data:
   uploads_data:
