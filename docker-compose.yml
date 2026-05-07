@@ -62,30 +62,6 @@ services:
     networks:
       - saas_network
 
-  keycloak:
-    build:
-      context: ./keycloak
-      dockerfile: Dockerfile
-    container_name: saas_keycloak_dev
-    restart: always
-    command: start-dev --import-realm
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://database:5432/${DB_NAME:-saas_db}
-      KC_DB_USERNAME: ${DB_USER:-postgres}
-      KC_DB_PASSWORD: ${DB_PASS:-postgres123}
-      KC_HOSTNAME_STRICT: 'false'
-      KC_HTTP_ENABLED: 'true'
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-    ports:
-      - '8080:8080'
-    depends_on:
-      database:
-        condition: service_healthy
-    networks:
-      - saas_network
-
   pgadmin:
     image: dpage/pgadmin4
     container_name: saas_pgadmin_dev
