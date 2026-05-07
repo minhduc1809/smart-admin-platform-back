@@ -45,15 +45,16 @@ enum JobStatus {
 
 model User {
   id           String    @id @default(cuid())
+  keycloakId   String?   @unique @map("keycloak_id")
   email        String    @unique
   username     String    @unique
-  passwordHash String
+  passwordHash String?   @map("password_hash")
   role         Role      @default(USER)
   firstName    String?
   lastName     String?
   picture      String?
   isActive     Boolean   @default(true)
-  
+
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
   deletedAt    DateTime? @map("deleted_at")
@@ -91,7 +92,7 @@ model Form {
   schema      Json      // Form fields schema
   settings    Json      // Form configurations
   isActive    Boolean   @default(true) @map("is_active")
-  
+
   createdBy   String    @map("created_by")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
@@ -130,7 +131,7 @@ model WorkflowDefinition {
   config      Json     // Steps and transitions
   formId      String?  @map("form_id")
   createdBy   String   @map("created_by")
-  
+
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
