@@ -17,16 +17,31 @@ interface JwtPayload {
 
 @Injectable()
 export class AuthService {
+  private readonly keycloakUrl: string;
+  private readonly realm: string;
+  private readonly clientId: string;
+  private readonly clientSecret: string;
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-  ) {}
+  ) {
+    this.keycloakUrl = process.env.KEYCLOAK_URL || 'http://localhost:8080';
+    this.realm = process.env.KEYCLOAK_REALM || 'smart-admin';
+    this.clientId = process.env.KEYCLOAK_CLIENT_ID || 'smart-admin-backend';
+    this.clientSecret =
+      process.env.KEYCLOAK_CLIENT_SECRET || 'smart-admin-backend-secret';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Local JWT Auth
+  // ---------------------------------------------------------------------------
 
   async login(email: string, pass: string) {
     const user = await this.prisma.user.findFirst({
       where: { email, deletedAt: null },
     });
-    if (!user || !user.isActive)
+    if (!user || !user.isActive || !user.passwordHash)
       throw new UnauthorizedException('error.INVALID_CREDENTIALS');
 
     const isValid = await bcrypt.compare(pass, user.passwordHash);
@@ -48,12 +63,11 @@ export class AuthService {
       expiresIn: (process.env.JWT_REFRESH_EXPIRATION ?? '7d') as StringValue,
     });
 
-    // Save refresh token to DB
     await this.prisma.refreshToken.create({
       data: {
-        token: await bcrypt.hash(refreshToken, 10), // Hash before storing
+        token: await bcrypt.hash(refreshToken, 10),
         userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
 
@@ -61,7 +75,6 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto) {
-    // Kiểm tra xem email hoặc username đã tồn tại chưa
     const existing = await this.prisma.user.findFirst({
       where: {
         OR: [{ email: dto.email }, { username: dto.username }],
@@ -141,5 +154,81 @@ export class AuthService {
       }
     }
     return { success: true };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Keycloak Auth
+  // ---------------------------------------------------------------------------
+
+  private get tokenEndpoint() {
+    return `${this.keycloakUrl}/realms/${this.realm}/protocol/openid-connect/token`;
+  }
+
+  private get logoutEndpoint() {
+    return `${this.keycloakUrl}/realms/${this.realm}/protocol/openid-connect/logout`;
+  }
+
+  async loginViaKeycloak(email: string, password: string) {
+    const body = new URLSearchParams({
+      grant_type: 'password',
+      client_id: this.clientId,
+      client_secret: this.clientSecret,
+      username: email,
+      password,
+      scope: 'openid',
+    });
+
+    const res = await fetch(this.tokenEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
+
+    if (!res.ok) {
+      throw new UnauthorizedException('error.INVALID_CREDENTIALS');
+    }
+
+    const data = await res.json();
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: data.expires_in,
+      tokenType: data.token_type,
+    };
+  }
+
+  async logoutFromKeycloak(refreshToken: string) {
+    const body = new URLSearchParams({
+      client_id: this.clientId,
+      client_secret: this.clientSecret,
+      refresh_token: refreshToken,
+    });
+
+    await fetch(this.logoutEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
+
+    return { success: true };
+  }
+
+  async getMe(userId: string, keycloakId?: string) {
+    const where = keycloakId ? { keycloakId } : { id: userId };
+    const user = await this.prisma.user.findUnique({
+      where,
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        role: true,
+        firstName: true,
+        lastName: true,
+        picture: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+    return user;
   }
 }
