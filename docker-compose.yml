@@ -17,6 +17,8 @@ services:
     ports:
       - '${PORT:-3000}:3000'
     volumes:
+      - .:/app
+      - /app/node_modules
       - uploads_data:/app/uploads
     networks:
       - saas_network
