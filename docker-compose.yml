@@ -61,29 +61,6 @@ services:
     networks:
       - saas_network
 
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: saas_backend_dev
-    restart: always
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASS:-postgres123}@database:5432/${DB_NAME:-saas_db}?schema=public
-      REDIS_HOST: redis
-    ports:
-      - '${PORT:-3000}:3000'
-    volumes:
-      - uploads_data:/app/uploads
-    networks:
-      - saas_network
-    depends_on:
-      database:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
   pgadmin:
     image: dpage/pgadmin4
     container_name: saas_pgadmin_dev
