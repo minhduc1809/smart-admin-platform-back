@@ -4,6 +4,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { Role, Prisma } from '@prisma/client';
 import { FilterUtil } from '../../common/utils/filter.util';
 import { UserPageDto } from './dto/user-page.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class UserService {
@@ -224,11 +225,49 @@ export class UserService {
     });
   }
 
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    await this.getProfile(userId); // Check existence
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: dto,
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        role: true,
+        firstName: true,
+        lastName: true,
+        picture: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
   async remove(id: string) {
     await this.getProfile(id); // Check existence
     return this.prisma.user.update({
       where: { id },
       data: { deletedAt: new Date() },
+    });
+  }
+
+  async assignRole(id: string, role: Role) {
+    await this.getProfile(id); // Check existence
+    return this.prisma.user.update({
+      where: { id },
+      data: { role },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        role: true,
+        firstName: true,
+        lastName: true,
+        isActive: true,
+        createdAt: true,
+      },
     });
   }
 }

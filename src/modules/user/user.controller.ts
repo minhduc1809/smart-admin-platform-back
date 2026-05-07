@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Put } from '@nestjs/common';
 import { UserService } from './user.service';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
@@ -6,6 +6,7 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserPageDto } from './dto/user-page.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @ApiTags('User')
 @ApiBearerAuth()
@@ -17,6 +18,12 @@ export class UserController {
   @ApiOperation({ summary: 'Lấy thông tin profile người dùng hiện tại' })
   getMe(@CurrentUser() user: any) {
     return this.userService.getProfile(user.id);
+  }
+
+  @Put('me')
+  @ApiOperation({ summary: 'Cập nhật profile người dùng hiện tại' })
+  updateMe(@CurrentUser() user: any, @Body() dto: UpdateProfileDto) {
+    return this.userService.updateProfile(user.id, dto);
   }
 
   @Get()
