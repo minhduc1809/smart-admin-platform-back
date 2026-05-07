@@ -5,6 +5,7 @@ import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UserPageDto } from './dto/user-page.dto';
 
 @ApiTags('User')
 @ApiBearerAuth()
@@ -21,10 +22,35 @@ export class UserController {
   @Get()
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Danh sách người dùng (Admin only)' })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'role', required: false, enum: Role })
+  @ApiQuery({ name: 'status', required: false, type: String, description: 'active | inactive | true | false | 1 | 0' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  findAll(@Query('page') page?: number, @Query('limit') limit?: number) {
-    return this.userService.findAll(page ? +page : 1, limit ? +limit : 10);
+  @ApiQuery({ name: 'sort', required: false, type: String, description: 'field:asc|desc (e.g. createdAt:desc)' })
+  findAll(
+    @Query('search') search?: string,
+    @Query('role') role?: Role,
+    @Query('status') status?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('sort') sort?: string,
+  ) {
+    return this.userService.findAll({
+      search,
+      role,
+      status,
+      page: page ? +page : 1,
+      limit: limit ? +limit : 10,
+      sort,
+    });
+  }
+
+  @Post('page')
+  @Roles(Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Danh sách người dùng theo định dạng phân trang FE' })
+  findPage(@Body() dto: UserPageDto) {
+    return this.userService.findPage(dto);
   }
 
   @Patch(':id')
