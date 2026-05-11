@@ -1,14 +1,56 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Role, Prisma } from '@prisma/client';
 import { FilterUtil } from '../../common/utils/filter.util';
 import { UserPageDto } from './dto/user-page.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async create(dto: CreateUserDto) {
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ email: dto.email }, { username: dto.username }],
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException('user.USERNAME_EXISTS');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        username: dto.username,
+        passwordHash: hashedPassword,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        role: dto.role || Role.USER,
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        role: true,
+        firstName: true,
+        lastName: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+
+    return user;
+  }
+
+  async findOne(id: string) {
+    return this.getProfile(id); // Re-use getProfile since it selects the safe fields
+  }
 
   async findAll(params: {
     search?: string;

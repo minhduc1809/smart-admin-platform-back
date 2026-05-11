@@ -7,10 +7,11 @@ import { Role } from '@prisma/client';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserPageDto } from './dto/user-page.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 
-@ApiTags('User')
+@ApiTags('Users')
 @ApiBearerAuth()
-@Controller('user')
+@Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
@@ -58,6 +59,20 @@ export class UserController {
   @ApiOperation({ summary: 'Danh sách người dùng theo định dạng phân trang FE' })
   findPage(@Body() dto: UserPageDto) {
     return this.userService.findPage(dto);
+  }
+
+  @Post()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Tạo người dùng mới (Admin only)' })
+  create(@Body() dto: CreateUserDto) {
+    return this.userService.create(dto);
+  }
+
+  @Get(':id')
+  @Roles(Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Chi tiết người dùng' })
+  findOne(@Param('id') id: string) {
+    return this.userService.findOne(id);
   }
 
   @Patch(':id')
