@@ -9,10 +9,30 @@ describe('ValidationEngine', () => {
 
   const schema: FormSchema = {
     fields: [
-      { name: 'fullName', label: 'Full Name', type: 'text', required: true, minLength: 3 },
-      { name: 'age', label: 'Age', type: 'number', required: true },
-      { name: 'gender', label: 'Gender', type: 'select', options: ['male', 'female', 'other'] },
-      { name: 'birthday', label: 'Birthday', type: 'date' },
+      {
+        key: 'fullName',
+        label: 'Full Name',
+        type: 'text',
+        rules: { required: true, minLength: 3 },
+      },
+      {
+        key: 'age',
+        label: 'Age',
+        type: 'number',
+        rules: { required: true },
+      },
+      {
+        key: 'birthday',
+        label: 'Birthday',
+        type: 'date',
+        rules: { required: true },
+      },
+      {
+        key: 'contractDate',
+        label: 'Contract Date',
+        type: 'date',
+        rules: { afterField: 'birthday' },
+      },
     ],
   };
 
@@ -20,12 +40,11 @@ describe('ValidationEngine', () => {
     const data = {
       fullName: 'John Doe',
       age: 30,
-      gender: 'male',
       birthday: '1994-01-01',
+      contractDate: '2024-01-01',
     };
     const result = engine.validate(schema, data);
-    expect(result.valid).toBe(true);
-    expect(result.errors).toHaveLength(0);
+    expect(result).toHaveLength(0);
   });
 
   it('should return error if required field is missing', () => {
@@ -34,8 +53,9 @@ describe('ValidationEngine', () => {
       // age is missing
     };
     const result = engine.validate(schema, data);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContainEqual({ field: 'age', error: 'validation.REQUIRED' });
+    expect(result).toContainEqual(
+      expect.objectContaining({ field: 'age', i18nKey: 'validation.required' })
+    );
   });
 
   it('should return error if minLength is violated', () => {
@@ -44,8 +64,9 @@ describe('ValidationEngine', () => {
       age: 30,
     };
     const result = engine.validate(schema, data);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContainEqual({ field: 'fullName', error: 'validation.MIN_LENGTH' });
+    expect(result).toContainEqual(
+      expect.objectContaining({ field: 'fullName', i18nKey: 'validation.min_length' })
+    );
   });
 
   it('should return error if type is incorrect (number)', () => {
@@ -54,19 +75,9 @@ describe('ValidationEngine', () => {
       age: 'thirty', // should be number
     };
     const result = engine.validate(schema, data);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContainEqual({ field: 'age', error: 'validation.MUST_BE_NUMBER' });
-  });
-
-  it('should return error if select option is invalid', () => {
-    const data = {
-      fullName: 'John Doe',
-      age: 30,
-      gender: 'unknown',
-    };
-    const result = engine.validate(schema, data);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContainEqual({ field: 'gender', error: 'validation.INVALID_OPTION' });
+    expect(result).toContainEqual(
+      expect.objectContaining({ field: 'age', i18nKey: 'validation.type_number' })
+    );
   });
 
   it('should return error if date is invalid', () => {
@@ -76,7 +87,21 @@ describe('ValidationEngine', () => {
       birthday: 'invalid-date',
     };
     const result = engine.validate(schema, data);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContainEqual({ field: 'birthday', error: 'validation.INVALID_DATE' });
+    expect(result).toContainEqual(
+      expect.objectContaining({ field: 'birthday', i18nKey: 'validation.type_date' })
+    );
+  });
+
+  it('should return cross-field error (afterField)', () => {
+    const data = {
+      fullName: 'John Doe',
+      age: 30,
+      birthday: '2024-01-01',
+      contractDate: '2023-01-01', // Before birthday
+    };
+    const result = engine.validate(schema, data);
+    expect(result).toContainEqual(
+      expect.objectContaining({ field: 'contractDate', i18nKey: 'validation.date_after_field' })
+    );
   });
 });
