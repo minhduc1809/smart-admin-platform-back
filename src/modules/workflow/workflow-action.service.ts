@@ -1,0 +1,273 @@
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { PrismaService } from '../../prisma/prisma.service';
+import { WorkflowEngine } from './workflow.engine';
+import { ExecuteActionDto } from './dto/execute-action.dto';
+import { WorkflowConfig } from './interfaces/workflow-config.interface';
+import { SubmissionService } from '../submission/submission.service';
+
+@Injectable()
+export class WorkflowActionService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly workflowEngine: WorkflowEngine,
+    private readonly eventEmitter: EventEmitter2,
+    @Inject(forwardRef(() => SubmissionService))
+    private readonly submissionService: SubmissionService,
+  ) {}
+
+  async execute(actorId: string, actorRole: string, dto: ExecuteActionDto) {
+    if (dto.action === 'resubmit') {
+      return this.handleResubmit(actorId, actorRole, dto);
+    }
+
+    const instance = await this.prisma.workflowInstance.findFirst({
+      where: {
+        submissionId: dto.submissionId,
+        status: 'ACTIVE',
+      },
+    });
+
+    if (!instance) {
+      throw new NotFoundException('workflow.INSTANCE_NOT_FOUND');
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      return await this.workflowEngine.executeAction(
+        tx,
+        instance.id,
+        dto.action,
+        actorId,
+        actorRole,
+        dto.comment,
+      );
+    });
+
+    this.eventEmitter.emit('workflow.state.changed', {
+      submissionId: result.submissionId,
+      instanceId: result.instanceId,
+      fromState: result.previousState,
+      toState: result.currentState,
+      action: dto.action,
+      actorId,
+    });
+
+    if (result.isCompleted) {
+      this.eventEmitter.emit('workflow.completed', {
+        submissionId: result.submissionId,
+        instanceId: result.instanceId,
+        finalState: result.currentState,
+      });
+    }
+
+    return result;
+  }
+
+  private async handleResubmit(
+    actorId: string,
+    actorRole: string,
+    dto: ExecuteActionDto,
+  ) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { id: dto.submissionId },
+      include: {
+        workflows: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: { definition: true },
+        },
+      },
+    });
+
+    if (!submission) {
+      throw new NotFoundException('submission.NOT_FOUND');
+    }
+
+    const latestInstance = submission.workflows[0];
+    if (!latestInstance) {
+      throw new BadRequestException('workflow.INSTANCE_NOT_FOUND');
+    }
+
+    const config =
+      latestInstance.definition.config as unknown as WorkflowConfig;
+    const currentState = latestInstance.currentStep;
+
+    const transition = this.workflowEngine.findTransition(
+      config,
+      currentState,
+      'resubmit',
+    );
+    if (!transition) {
+      throw new BadRequestException('workflow.INVALID_TRANSITION');
+    }
+    this.workflowEngine.validatePermission(transition, actorRole);
+
+    const newSubmission = await this.submissionService.resubmit(
+      actorId,
+      dto.submissionId,
+      dto.data,
+    );
+
+    // Record resubmit in the old instance's history
+    await this.prisma.workflowHistory.create({
+      data: {
+        instanceId: latestInstance.id,
+        fromStep: currentState,
+        toStep: 'resubmitted',
+        action: 'resubmit',
+        actorId,
+        comment: dto.comment,
+      },
+    });
+
+    this.eventEmitter.emit('workflow.resubmitted', {
+      originalSubmissionId: dto.submissionId,
+      newSubmissionId: newSubmission.id,
+      actorId,
+    });
+
+    return {
+      originalSubmissionId: dto.submissionId,
+      newSubmissionId: newSubmission.id,
+      action: 'resubmit',
+      revisionNumber: newSubmission.revisionNumber,
+    };
+  }
+
+  async getHistory(submissionId: string, includeRevisions = false) {
+    if (includeRevisions) {
+      return this.getRevisionChainHistory(submissionId);
+    }
+
+    const instance = await this.prisma.workflowInstance.findFirst({
+      where: { submissionId },
+      include: {
+        histories: {
+          orderBy: { createdAt: 'asc' as const },
+        },
+        definition: { select: { name: true, config: true } },
+      },
+    });
+
+    if (!instance) {
+      throw new NotFoundException('workflow.INSTANCE_NOT_FOUND');
+    }
+
+    return {
+      instanceId: instance.id,
+      currentStep: instance.currentStep,
+      status: instance.status,
+      workflowName: instance.definition.name,
+      history: instance.histories,
+    };
+  }
+
+  private async getRevisionChainHistory(submissionId: string) {
+    // Walk up to root
+    let currentId: string | null = submissionId;
+    let rootId = submissionId;
+    while (currentId) {
+      const sub = await this.prisma.submission.findUnique({
+        where: { id: currentId },
+        select: { id: true, parentSubmissionId: true },
+      });
+      if (!sub) break;
+      rootId = sub.id;
+      currentId = sub.parentSubmissionId;
+    }
+
+    // Collect all submission IDs in the chain
+    const chain: string[] = [];
+    const queue = [rootId];
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      chain.push(id);
+      const children = await this.prisma.submission.findMany({
+        where: { parentSubmissionId: id },
+        select: { id: true },
+        orderBy: { revisionNumber: 'asc' },
+      });
+      for (const child of children) {
+        queue.push(child.id);
+      }
+    }
+
+    const instances = await this.prisma.workflowInstance.findMany({
+      where: { submissionId: { in: chain } },
+      include: {
+        histories: { orderBy: { createdAt: 'asc' } },
+        definition: { select: { name: true } },
+        submission: { select: { revisionNumber: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return {
+      revisionChain: chain,
+      revisions: instances.map((inst) => ({
+        submissionId: inst.submissionId,
+        revisionNumber: inst.submission.revisionNumber,
+        instanceId: inst.id,
+        currentStep: inst.currentStep,
+        status: inst.status,
+        workflowName: inst.definition.name,
+        history: inst.histories,
+      })),
+    };
+  }
+
+  async getAvailableActions(submissionId: string, userRole: string) {
+    let instance = await this.prisma.workflowInstance.findFirst({
+      where: {
+        submissionId,
+        status: 'ACTIVE',
+      },
+      include: { definition: true },
+    });
+
+    // If no active instance, check completed/cancelled for resubmit-type actions
+    if (!instance) {
+      instance = await this.prisma.workflowInstance.findFirst({
+        where: {
+          submissionId,
+          status: { in: ['COMPLETED', 'CANCELLED'] },
+        },
+        orderBy: { updatedAt: 'desc' },
+        include: { definition: true },
+      });
+    }
+
+    if (!instance) {
+      return { actions: [] };
+    }
+
+    const config = instance.definition.config as unknown as WorkflowConfig;
+    const currentState = instance.currentStep;
+
+    const availableActions = config.transitions
+      .filter((t) => {
+        const fromMatch = Array.isArray(t.from)
+          ? t.from.includes(currentState)
+          : t.from === currentState || t.from === '*';
+        const roleMatch =
+          !t.roles || t.roles.length === 0 || t.roles.includes(userRole);
+        return fromMatch && roleMatch;
+      })
+      .map((t) => ({
+        action: t.action,
+        targetState: t.to,
+        requiresComment: t.conditions?.requireComment || false,
+      }));
+
+    return {
+      currentState,
+      actions: availableActions,
+    };
+  }
+}
