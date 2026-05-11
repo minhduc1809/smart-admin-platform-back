@@ -14,6 +14,9 @@ import { FormModule } from './modules/form/form.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { KeycloakSyncGuard } from './common/guards/keycloak-sync.guard';
 
+import { SubmissionModule } from './modules/submission/submission.module';
+import { WorkflowModule } from './modules/workflow/workflow.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -33,6 +36,8 @@ import { KeycloakSyncGuard } from './common/guards/keycloak-sync.guard';
     AuthModule,
     UserModule,
     FormModule,
+    SubmissionModule,
+    WorkflowModule,
   ],
   controllers: [AppController],
   providers: [
