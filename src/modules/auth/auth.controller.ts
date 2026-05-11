@@ -20,7 +20,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with local credentials' })
-  @ApiResponse({ status: 200, description: 'Returns access & refresh tokens' })
+  @ApiResponse({ status: 200, description: 'Returns access & refresh tokens along with user info' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
   }

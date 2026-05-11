@@ -71,7 +71,9 @@ export class AuthService {
       },
     });
 
-    return { accessToken, refreshToken };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash, ...safeUser } = user;
+    return { accessToken, refreshToken, user: safeUser };
   }
 
   async register(dto: RegisterDto) {
