@@ -10,6 +10,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
+import { FormModule } from './modules/form/form.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { KeycloakSyncGuard } from './common/guards/keycloak-sync.guard';
 
@@ -31,6 +32,7 @@ import { KeycloakSyncGuard } from './common/guards/keycloak-sync.guard';
     PrismaModule,
     AuthModule,
     UserModule,
+    FormModule,
   ],
   controllers: [AppController],
   providers: [
