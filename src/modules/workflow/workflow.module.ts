@@ -1,8 +1,20 @@
 import { Module } from '@nestjs/common';
+import { PrismaModule } from '../../prisma/prisma.module';
 import { WorkflowEngine } from './workflow.engine';
+import { WorkflowDefinitionService } from './workflow-definition.service';
+import { WorkflowActionService } from './workflow-action.service';
+import { WorkflowController } from './workflow.controller';
+import { WorkflowEventListener } from './listeners/workflow-event.listener';
 
 @Module({
-  providers: [WorkflowEngine],
+  imports: [PrismaModule],
+  controllers: [WorkflowController],
+  providers: [
+    WorkflowEngine,
+    WorkflowDefinitionService,
+    WorkflowActionService,
+    WorkflowEventListener,
+  ],
   exports: [WorkflowEngine],
 })
 export class WorkflowModule {}

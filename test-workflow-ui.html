@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workflow System Test UI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; padding: 20px; color: #333; }
+    h1 { text-align: center; margin-bottom: 20px; color: #1a73e8; }
+    .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .card h2 { margin-bottom: 15px; font-size: 16px; color: #444; border-bottom: 2px solid #e8eaed; padding-bottom: 8px; }
+    .full-width { grid-column: 1 / -1; }
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #555; }
+    input, select, textarea { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; margin-bottom: 12px; }
+    textarea { min-height: 100px; font-family: monospace; font-size: 12px; }
+    button { padding: 8px 16px; background: #1a73e8; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 8px; margin-bottom: 8px; }
+    button:hover { background: #1557b0; }
+    button.secondary { background: #5f6368; }
+    button.secondary:hover { background: #3c4043; }
+    button.danger { background: #d93025; }
+    button.danger:hover { background: #a50e0e; }
+    button.success { background: #188038; }
+    button.success:hover { background: #0d652d; }
+    .response { background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 4px; padding: 12px; margin-top: 12px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+    .response.error { border-color: #fce8e6; background: #fce8e6; color: #d93025; }
+    .response.success { border-color: #e6f4ea; background: #e6f4ea; color: #188038; }
+    .config-section { margin-bottom: 10px; }
+    .status-bar { background: #fff; border-radius: 8px; padding: 12px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+    .status-bar input { margin-bottom: 0; flex: 1; }
+    .status-bar button { margin-bottom: 0; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .badge-active { background: #e6f4ea; color: #188038; }
+    .badge-completed { background: #e8eaed; color: #5f6368; }
+    .timeline { border-left: 3px solid #e8eaed; margin-left: 10px; padding-left: 15px; }
+    .timeline-item { margin-bottom: 12px; position: relative; }
+    .timeline-item::before { content: ''; position: absolute; left: -21px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #1a73e8; }
+    .timeline-item .action { font-weight: 600; color: #1a73e8; }
+    .timeline-item .meta { font-size: 12px; color: #777; }
+  </style>
+</head>
+<body>
+  <h1>Workflow System Test UI</h1>
+
+  <!-- Auth Config -->
+  <div class="status-bar">
+    <label style="margin-bottom:0; white-space:nowrap;">Base URL:</label>
+    <input type="text" id="baseUrl" value="http://localhost:3000" style="max-width:250px;">
+    <label style="margin-bottom:0; white-space:nowrap;">JWT Token:</label>
+    <input type="text" id="token" placeholder="Paste your access token here...">
+    <button onclick="testConnection()">Test</button>
+  </div>
+
+  <div class="container">
+
+    <!-- 1. Login -->
+    <div class="card">
+      <h2>1. Login (Get Token)</h2>
+      <label>Email</label>
+      <input type="text" id="loginEmail" value="admin@example.com">
+      <label>Password</label>
+      <input type="password" id="loginPassword" value="123456">
+      <button onclick="login()">Login</button>
+      <div id="loginResponse" class="response" style="display:none;"></div>
+    </div>
+
+    <!-- 2. Create Workflow Definition -->
+    <div class="card">
+      <h2>2. Create Workflow Definition</h2>
+      <label>Name</label>
+      <input type="text" id="wfName" value="Leave Request Workflow">
+      <label>Form ID (optional)</label>
+      <input type="text" id="wfFormId" placeholder="UUID of the form to attach">
+      <label>Config (JSON)</label>
+      <textarea id="wfConfig">{
+  "states": ["pending_manager", "pending_hr", "approved", "rejected"],
+  "initialState": "pending_manager",
+  "finalStates": ["approved", "rejected"],
+  "transitions": [
+    { "from": "pending_manager", "to": "pending_hr", "action": "approve", "roles": ["MANAGER", "ADMIN"] },
+    { "from": "pending_hr", "to": "approved", "action": "approve", "roles": ["ADMIN"] },
+    { "from": "*", "to": "rejected", "action": "reject", "roles": ["MANAGER", "ADMIN"], "conditions": { "requireComment": true } }
+  ]
+}</textarea>
+      <button onclick="createDefinition()">Create Definition</button>
+      <div id="defResponse" class="response" style="display:none;"></div>
+    </div>
+
+    <!-- 3. List Definitions -->
+    <div class="card">
+      <h2>3. List Workflow Definitions</h2>
+      <button onclick="listDefinitions()">Load Definitions</button>
+      <div id="listDefResponse" class="response" style="display:none;"></div>
+    </div>
+
+    <!-- 4. Submit a Form -->
+    <div class="card">
+      <h2>4. Submit a Form (Trigger Workflow)</h2>
+      <label>Form ID</label>
+      <input type="text" id="submitFormId" placeholder="UUID of the form">
+      <label>Data (JSON)</label>
+      <textarea id="submitData">{
+  "reason": "Sick leave",
+  "from_date": "2026-05-12",
+  "to_date": "2026-05-14"
+}</textarea>
+      <button onclick="submitForm()">Submit</button>
+      <div id="submitResponse" class="response" style="display:none;"></div>
+    </div>
+
+    <!-- 5. Execute Workflow Action -->
+    <div class="card">
+      <h2>5. Execute Workflow Action</h2>
+      <label>Submission ID</label>
+      <input type="text" id="actionSubmissionId" placeholder="UUID of the submission">
+      <label>Action</label>
+      <select id="actionType">
+        <option value="approve">approve</option>
+        <option value="reject">reject</option>
+        <option value="cancel">cancel</option>
+        <option value="resubmit">resubmit</option>
+      </select>
+      <label>Comment (optional)</label>
+      <input type="text" id="actionComment" placeholder="Optional comment...">
+      <button class="success" onclick="executeAction()">Execute Action</button>
+      <div id="actionResponse" class="response" style="display:none;"></div>
+    </div>
+
+    <!-- 6. Available Actions -->
+    <div class="card">
+      <h2>6. Check Available Actions</h2>
+      <label>Submission ID</label>
+      <input type="text" id="availSubmissionId" placeholder="UUID of the submission">
+      <button class="secondary" onclick="getAvailableActions()">Check Actions</button>
+      <div id="availResponse" class="response" style="display:none;"></div>
+    </div>
+
+    <!-- 7. Workflow History -->
+    <div class="card full-width">
+      <h2>7. Workflow History</h2>
+      <label>Submission ID</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="historySubmissionId" placeholder="UUID of the submission" style="margin-bottom:0;">
+        <button onclick="getHistory()" style="margin-bottom:0;">Load History</button>
+      </div>
+      <div id="historyResponse" style="margin-top:15px;"></div>
+    </div>
+
+    <!-- 8. My Submissions -->
+    <div class="card">
+      <h2>8. My Submissions</h2>
+      <button onclick="getMySubmissions()">Load My Submissions</button>
+      <div id="mySubResponse" class="response" style="display:none;"></div>
+    </div>
+
+    <!-- 9. Admin Submissions -->
+    <div class="card">
+      <h2>9. All Submissions (Admin)</h2>
+      <button onclick="getAdminSubmissions()">Load All</button>
+      <div id="adminSubResponse" class="response" style="display:none;"></div>
+    </div>
+
+  </div>
+
+  <script>
+    function getBase() { return document.getElementById('baseUrl').value.replace(/\/$/, ''); }
+    function getToken() { return document.getElementById('token').value; }
+
+    function headers() {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      };
+    }
+
+    function showResponse(elId, data, isError = false) {
+      const el = document.getElementById(elId);
+      el.style.display = 'block';
+      el.className = `response ${isError ? 'error' : 'success'}`;
+      el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+
+    async function apiCall(method, path, body = null) {
+      const opts = { method, headers: headers() };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(`${getBase()}${path}`, opts);
+      const json = await res.json();
+      return { ok: res.ok, data: json };
+    }
+
+    async function testConnection() {
+      try {
+        const { ok, data } = await apiCall('GET', '/auth/me');
+        if (ok) {
+          alert(`Connected! User: ${data.data?.email || data.email || 'OK'}`);
+        } else {
+          alert(`Auth failed: ${data.message || 'Unauthorized'}`);
+        }
+      } catch (e) {
+        alert(`Connection error: ${e.message}`);
+      }
+    }
+
+    async function login() {
+      try {
+        const { ok, data } = await apiCall('POST', '/auth/login', {
+          email: document.getElementById('loginEmail').value,
+          password: document.getElementById('loginPassword').value,
+        });
+        showResponse('loginResponse', data, !ok);
+        if (ok && data.data?.accessToken) {
+          document.getElementById('token').value = data.data.accessToken;
+        }
+      } catch (e) {
+        showResponse('loginResponse', e.message, true);
+      }
+    }
+
+    async function createDefinition() {
+      try {
+        const config = JSON.parse(document.getElementById('wfConfig').value);
+        const body = {
+          name: document.getElementById('wfName').value,
+          config,
+        };
+        const formId = document.getElementById('wfFormId').value.trim();
+        if (formId) body.formId = formId;
+
+        const { ok, data } = await apiCall('POST', '/workflows/definitions', body);
+        showResponse('defResponse', data, !ok);
+      } catch (e) {
+        showResponse('defResponse', e.message, true);
+      }
+    }
+
+    async function listDefinitions() {
+      try {
+        const { ok, data } = await apiCall('GET', '/workflows/definitions');
+        showResponse('listDefResponse', data, !ok);
+      } catch (e) {
+        showResponse('listDefResponse', e.message, true);
+      }
+    }
+
+    async function submitForm() {
+      try {
+        const formData = JSON.parse(document.getElementById('submitData').value);
+        const { ok, data } = await apiCall('POST', '/submissions', {
+          formId: document.getElementById('submitFormId').value.trim(),
+          data: formData,
+        });
+        showResponse('submitResponse', data, !ok);
+        if (ok && data.data?.id) {
+          document.getElementById('actionSubmissionId').value = data.data.id;
+          document.getElementById('availSubmissionId').value = data.data.id;
+          document.getElementById('historySubmissionId').value = data.data.id;
+        }
+      } catch (e) {
+        showResponse('submitResponse', e.message, true);
+      }
+    }
+
+    async function executeAction() {
+      try {
+        const body = {
+          submissionId: document.getElementById('actionSubmissionId').value.trim(),
+          action: document.getElementById('actionType').value,
+        };
+        const comment = document.getElementById('actionComment').value.trim();
+        if (comment) body.comment = comment;
+
+        const { ok, data } = await apiCall('POST', '/workflows/action', body);
+        showResponse('actionResponse', data, !ok);
+      } catch (e) {
+        showResponse('actionResponse', e.message, true);
+      }
+    }
+
+    async function getAvailableActions() {
+      try {
+        const id = document.getElementById('availSubmissionId').value.trim();
+        const { ok, data } = await apiCall('GET', `/workflows/submissions/${id}/available-actions`);
+        showResponse('availResponse', data, !ok);
+      } catch (e) {
+        showResponse('availResponse', e.message, true);
+      }
+    }
+
+    async function getHistory() {
+      const el = document.getElementById('historyResponse');
+      try {
+        const id = document.getElementById('historySubmissionId').value.trim();
+        const { ok, data } = await apiCall('GET', `/workflows/submissions/${id}/history`);
+
+        if (!ok) {
+          el.innerHTML = `<div class="response error">${JSON.stringify(data, null, 2)}</div>`;
+          return;
+        }
+
+        const result = data.data || data;
+        let html = `<p><strong>Workflow:</strong> ${result.workflowName} | <strong>Current:</strong> ${result.currentStep} | <span class="badge badge-${result.status === 'ACTIVE' ? 'active' : 'completed'}">${result.status}</span></p>`;
+        html += '<div class="timeline" style="margin-top:12px;">';
+        for (const h of (result.history || [])) {
+          html += `<div class="timeline-item">
+            <div class="action">${h.action}</div>
+            <div>${h.fromStep || '(start)'} → ${h.toStep}</div>
+            ${h.comment ? `<div><em>"${h.comment}"</em></div>` : ''}
+            <div class="meta">by ${h.actorId} at ${new Date(h.createdAt).toLocaleString()}</div>
+          </div>`;
+        }
+        html += '</div>';
+        el.innerHTML = html;
+      } catch (e) {
+        el.innerHTML = `<div class="response error">${e.message}</div>`;
+      }
+    }
+
+    async function getMySubmissions() {
+      try {
+        const { ok, data } = await apiCall('GET', '/submissions');
+        showResponse('mySubResponse', data, !ok);
+      } catch (e) {
+        showResponse('mySubResponse', e.message, true);
+      }
+    }
+
+    async function getAdminSubmissions() {
+      try {
+        const { ok, data } = await apiCall('GET', '/submissions/admin');
+        showResponse('adminSubResponse', data, !ok);
+      } catch (e) {
+        showResponse('adminSubResponse', e.message, true);
+      }
+    }
+  </script>
+</body>
+</html>

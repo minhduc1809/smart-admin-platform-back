@@ -25,6 +25,12 @@ enum SubmissionStatus {
   REJECTED
 }
 
+enum WorkflowInstanceStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
 enum JobType {
   IMPORT
   EXPORT
@@ -144,10 +150,11 @@ model WorkflowDefinition {
 }
 
 model WorkflowInstance {
-  id           String   @id @default(uuid())
-  definitionId String   @map("definition_id")
-  submissionId String   @map("submission_id")
-  currentStep  String   @map("current_step")
+  id           String                 @id @default(uuid())
+  definitionId String                 @map("definition_id")
+  submissionId String                 @map("submission_id")
+  currentStep  String                 @map("current_step")
+  status       WorkflowInstanceStatus @default(ACTIVE)
 
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
