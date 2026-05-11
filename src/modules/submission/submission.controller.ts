@@ -67,4 +67,23 @@ export class SubmissionController {
   ) {
     return this.submissionService.recall(id, userId);
   }
+
+  @Post(':id/resubmit')
+  @ApiOperation({ summary: 'Resubmit a rejected/cancelled/returned submission as a new revision' })
+  resubmit(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { data?: Record<string, any> },
+  ) {
+    return this.submissionService.resubmit(userId, id, body.data);
+  }
+
+  @Get(':id/revisions')
+  @ApiOperation({ summary: 'Get all revisions of a submission' })
+  getRevisions(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.submissionService.getRevisions(id, user.id, user.role);
+  }
 }

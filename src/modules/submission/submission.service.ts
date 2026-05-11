@@ -3,6 +3,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ValidationEngine, FormSchema } from '../form/validation.engine';
@@ -78,8 +79,8 @@ export class SubmissionService {
       submittedBy: userId,
       status: dto.status,
       formId: dto.formId,
-      deletedAt: undefined,
     });
+    delete where.deletedAt;
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.submission.findMany({
@@ -105,8 +106,8 @@ export class SubmissionService {
     const where = FilterUtil.buildPrismaWhere({
       status: dto.status,
       formId: dto.formId,
-      deletedAt: undefined,
     });
+    delete where.deletedAt;
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.submission.findMany({
@@ -178,7 +179,6 @@ export class SubmissionService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      // Cancel any active workflow instances
       for (const wf of submission.workflows) {
         await tx.workflowInstance.update({
           where: { id: wf.id },
@@ -191,5 +191,136 @@ export class SubmissionService {
         data: { status: SubmissionStatus.DRAFT },
       });
     });
+  }
+
+  async resubmit(
+    userId: string,
+    originalSubmissionId: string,
+    newData?: Record<string, any>,
+  ) {
+    const original = await this.prisma.submission.findUnique({
+      where: { id: originalSubmissionId },
+      include: {
+        form: true,
+        workflows: { where: { status: 'ACTIVE' } },
+      },
+    });
+
+    if (!original) {
+      throw new NotFoundException('submission.NOT_FOUND');
+    }
+
+    if (original.submittedBy !== userId) {
+      throw new ForbiddenException('error.FORBIDDEN');
+    }
+
+    const resubmittableStatuses: SubmissionStatus[] = [
+      SubmissionStatus.REJECTED,
+      SubmissionStatus.CANCELLED,
+      SubmissionStatus.RETURNED,
+    ];
+    if (!resubmittableStatuses.includes(original.status)) {
+      throw new BadRequestException('submission.CANNOT_RESUBMIT');
+    }
+
+    const data = newData ?? (original.data as Record<string, any>);
+
+    const errors = this.validationEngine.validate(
+      original.form.schema as unknown as FormSchema,
+      data,
+    );
+    if (errors.length > 0) {
+      throw new UnprocessableEntityException({
+        message: 'validation.INVALID',
+        errors,
+      });
+    }
+
+    const workflow = await this.prisma.workflowDefinition.findFirst({
+      where: { formId: original.formId },
+    });
+
+    const submission = await this.prisma.$transaction(async (tx) => {
+      // Complete any active workflow instances on the original (returned_for_edit case)
+      for (const wf of original.workflows) {
+        await tx.workflowInstance.update({
+          where: { id: wf.id },
+          data: { status: 'COMPLETED' },
+        });
+      }
+
+      const sub = await tx.submission.create({
+        data: {
+          formId: original.formId,
+          submittedBy: userId,
+          data,
+          status: workflow
+            ? SubmissionStatus.UNDER_REVIEW
+            : SubmissionStatus.SUBMITTED,
+          parentSubmissionId: original.id,
+          revisionNumber: original.revisionNumber + 1,
+        },
+      });
+
+      if (workflow) {
+        await this.workflowEngine.initiate(tx, sub.id, workflow);
+      }
+
+      return sub;
+    });
+
+    return submission;
+  }
+
+  async getRevisions(id: string, userId: string, role: string) {
+    // Walk up to find root
+    let currentId: string | null = id;
+    let rootId = id;
+    while (currentId) {
+      const sub = await this.prisma.submission.findUnique({
+        where: { id: currentId },
+        select: { id: true, parentSubmissionId: true, submittedBy: true },
+      });
+      if (!sub) break;
+
+      if (role !== 'ADMIN' && role !== 'MANAGER' && sub.submittedBy !== userId) {
+        throw new ForbiddenException('error.FORBIDDEN');
+      }
+
+      rootId = sub.id;
+      currentId = sub.parentSubmissionId;
+    }
+
+    // Collect all revisions iteratively from root
+    const revisions: any[] = [];
+    const queue = [rootId];
+
+    while (queue.length > 0) {
+      const parentId = queue.shift()!;
+      const sub = await this.prisma.submission.findUnique({
+        where: { id: parentId },
+        include: {
+          workflows: {
+            select: { currentStep: true, status: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+      });
+      if (sub) {
+        revisions.push(sub);
+        const children = await this.prisma.submission.findMany({
+          where: { parentSubmissionId: parentId },
+          select: { id: true },
+          orderBy: { revisionNumber: 'asc' },
+        });
+        for (const child of children) {
+          queue.push(child.id);
+        }
+      }
+    }
+
+    revisions.sort((a, b) => a.revisionNumber - b.revisionNumber);
+    return revisions;
   }
 }

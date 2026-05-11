@@ -50,18 +50,52 @@ export class WorkflowEventListener {
 
     if (!submission) return;
 
+    const lower = payload.finalState.toLowerCase();
+    let type = 'SUCCESS';
+    let title = 'Workflow Completed';
+
+    if (lower.includes('reject')) {
+      type = 'WARNING';
+      title = 'Submission Rejected';
+    } else if (lower.includes('cancel')) {
+      type = 'INFO';
+      title = 'Submission Cancelled';
+    } else if (lower.includes('return')) {
+      type = 'WARNING';
+      title = 'Submission Returned for Edit';
+    }
+
     await this.prisma.notification.create({
       data: {
         userId: submission.submittedBy,
-        title: 'Workflow Completed',
-        content: `Your submission has reached final state: "${payload.finalState}".`,
-        type: payload.finalState.toLowerCase().includes('reject')
-          ? 'WARNING'
-          : 'SUCCESS',
+        title,
+        content: `Your submission has reached state: "${payload.finalState}".`,
+        type,
         metadata: {
           submissionId: payload.submissionId,
           instanceId: payload.instanceId,
           finalState: payload.finalState,
+        },
+      },
+    });
+  }
+
+  @OnEvent('workflow.resubmitted')
+  async handleResubmitted(payload: {
+    originalSubmissionId: string;
+    newSubmissionId: string;
+    actorId: string;
+  }) {
+    await this.prisma.notification.create({
+      data: {
+        userId: payload.actorId,
+        title: 'Resubmission Created',
+        content:
+          'A new revision has been created for your submission and is now under review.',
+        type: 'INFO',
+        metadata: {
+          originalSubmissionId: payload.originalSubmissionId,
+          newSubmissionId: payload.newSubmissionId,
         },
       },
     });

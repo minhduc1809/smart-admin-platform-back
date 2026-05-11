@@ -92,8 +92,14 @@ export class WorkflowController {
 
   @Get('submissions/:submissionId/history')
   @ApiOperation({ summary: 'Get workflow history for a submission' })
-  getHistory(@Param('submissionId') submissionId: string) {
-    return this.actionService.getHistory(submissionId);
+  getHistory(
+    @Param('submissionId') submissionId: string,
+    @Query('includeRevisions') includeRevisions?: string,
+  ) {
+    return this.actionService.getHistory(
+      submissionId,
+      includeRevisions === 'true',
+    );
   }
 
   @Get('submissions/:submissionId/available-actions')
