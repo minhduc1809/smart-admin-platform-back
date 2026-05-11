@@ -125,10 +125,12 @@ export class WorkflowEngine {
     action: string,
   ): WorkflowTransition | null {
     return (
-      config.transitions.find(
-        (t) =>
-          (t.from === currentState || t.from === '*') && t.action === action,
-      ) || null
+      config.transitions.find((t) => {
+        const fromMatch = Array.isArray(t.from)
+          ? t.from.includes(currentState)
+          : t.from === currentState || t.from === '*';
+        return fromMatch && t.action === action;
+      }) || null
     );
   }
 
@@ -148,8 +150,11 @@ export class WorkflowEngine {
     config: WorkflowConfig,
     state: string,
   ): SubmissionStatus {
+    const lower = state.toLowerCase();
+    if (lower.includes('cancel')) return SubmissionStatus.CANCELLED;
+    if (lower.includes('return')) return SubmissionStatus.RETURNED;
     if (config.finalStates.includes(state)) {
-      if (state.toLowerCase().includes('reject')) {
+      if (lower.includes('reject')) {
         return SubmissionStatus.REJECTED;
       }
       return SubmissionStatus.APPROVED;

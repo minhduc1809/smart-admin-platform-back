@@ -135,10 +135,13 @@ export class WorkflowDefinitionService {
     }
 
     for (const t of config.transitions) {
-      if (t.from !== '*' && !config.states.includes(t.from)) {
-        throw new BadRequestException(
-          `Transition from "${t.from}" references an undefined state`,
-        );
+      const fromValues = Array.isArray(t.from) ? t.from : [t.from];
+      for (const fromState of fromValues) {
+        if (fromState !== '*' && !config.states.includes(fromState)) {
+          throw new BadRequestException(
+            `Transition from "${fromState}" references an undefined state`,
+          );
+        }
       }
       if (!config.states.includes(t.to)) {
         throw new BadRequestException(

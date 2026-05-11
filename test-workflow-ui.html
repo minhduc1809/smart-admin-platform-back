@@ -7,10 +7,13 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; padding: 20px; color: #333; }
-    h1 { text-align: center; margin-bottom: 20px; color: #1a73e8; }
+    h1 { text-align: center; margin-bottom: 8px; color: #1a73e8; }
+    .subtitle { text-align: center; margin-bottom: 24px; color: #666; font-size: 14px; }
     .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .card h2 { margin-bottom: 15px; font-size: 16px; color: #444; border-bottom: 2px solid #e8eaed; padding-bottom: 8px; }
+    .card h2 { margin-bottom: 6px; font-size: 16px; color: #444; border-bottom: 2px solid #e8eaed; padding-bottom: 8px; }
+    .card .context { font-size: 12px; color: #777; margin-bottom: 14px; line-height: 1.5; padding: 8px 10px; background: #f0f4ff; border-left: 3px solid #1a73e8; border-radius: 0 4px 4px 0; }
+    .card .context strong { color: #1a73e8; }
     .full-width { grid-column: 1 / -1; }
     label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #555; }
     input, select, textarea { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; margin-bottom: 12px; }
@@ -26,7 +29,6 @@
     .response { background: #f8f9fa; border: 1px solid #e8eaed; border-radius: 4px; padding: 12px; margin-top: 12px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
     .response.error { border-color: #fce8e6; background: #fce8e6; color: #d93025; }
     .response.success { border-color: #e6f4ea; background: #e6f4ea; color: #188038; }
-    .config-section { margin-bottom: 10px; }
     .status-bar { background: #fff; border-radius: 8px; padding: 12px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
     .status-bar input { margin-bottom: 0; flex: 1; }
     .status-bar button { margin-bottom: 0; }
@@ -38,10 +40,18 @@
     .timeline-item::before { content: ''; position: absolute; left: -21px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #1a73e8; }
     .timeline-item .action { font-weight: 600; color: #1a73e8; }
     .timeline-item .meta { font-size: 12px; color: #777; }
+    #resubmitDataGroup { display: none; }
+
+    .section-divider { grid-column: 1 / -1; text-align: center; padding: 10px 0; position: relative; }
+    .section-divider span { background: #f5f7fa; padding: 0 16px; font-size: 14px; font-weight: 700; color: #1a73e8; text-transform: uppercase; letter-spacing: 1px; position: relative; z-index: 1; }
+    .section-divider::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: #d2e3fc; }
+
+    .flow-diagram { font-size: 12px; color: #555; margin-bottom: 14px; padding: 10px; background: #fafafa; border: 1px solid #e8eaed; border-radius: 4px; font-family: monospace; white-space: pre; line-height: 1.6; overflow-x: auto; }
   </style>
 </head>
 <body>
   <h1>Workflow System Test UI</h1>
+  <p class="subtitle">Simulates a Leave Request workflow with multiple roles: Employee submits, Manager/HR reviews, and the system tracks all state changes.</p>
 
   <!-- Auth Config -->
   <div class="status-bar">
@@ -54,9 +64,17 @@
 
   <div class="container">
 
+    <!-- ======= SETUP PHASE ======= -->
+    <div class="section-divider"><span>Phase 1 &mdash; Setup</span></div>
+
     <!-- 1. Login -->
     <div class="card">
       <h2>1. Login (Get Token)</h2>
+      <div class="context">
+        <strong>Who:</strong> Any user (Employee, Manager, or Admin)<br>
+        <strong>What:</strong> Authenticate and get a JWT token. The token determines your role and what actions you can perform.<br>
+        <strong>Tip:</strong> Use <code>admin@example.com</code> (ADMIN role) to test all actions, or create separate users with MANAGER/USER roles for realistic testing.
+      </div>
       <label>Email</label>
       <input type="text" id="loginEmail" value="admin@example.com">
       <label>Password</label>
@@ -68,19 +86,33 @@
     <!-- 2. Create Workflow Definition -->
     <div class="card">
       <h2>2. Create Workflow Definition</h2>
+      <div class="context">
+        <strong>Who:</strong> Admin or Manager (one-time setup)<br>
+        <strong>What:</strong> Define the approval process for a form. This config tells the system: who can approve, what states exist, and which transitions are allowed.<br>
+        <strong>When:</strong> Once per form type. After creation, all submissions to this form will follow this workflow automatically.
+      </div>
+      <div class="flow-diagram">Workflow Flow:
+  Employee submits &rarr; [pending_manager]
+    Manager approves &rarr; [pending_hr] &rarr; HR approves &rarr; [approved]
+    Manager rejects  &rarr; [rejected]
+    Manager returns  &rarr; [returned_for_edit] &rarr; Employee resubmits &rarr; [pending_manager]
+    Employee cancels &rarr; [cancelled] &rarr; Employee resubmits &rarr; [pending_manager]</div>
       <label>Name</label>
       <input type="text" id="wfName" value="Leave Request Workflow">
       <label>Form ID (optional)</label>
       <input type="text" id="wfFormId" placeholder="UUID of the form to attach">
       <label>Config (JSON)</label>
       <textarea id="wfConfig">{
-  "states": ["pending_manager", "pending_hr", "approved", "rejected"],
+  "states": ["pending_manager", "pending_hr", "approved", "rejected", "cancelled", "returned_for_edit"],
   "initialState": "pending_manager",
-  "finalStates": ["approved", "rejected"],
+  "finalStates": ["approved", "rejected", "cancelled"],
   "transitions": [
     { "from": "pending_manager", "to": "pending_hr", "action": "approve", "roles": ["MANAGER", "ADMIN"] },
     { "from": "pending_hr", "to": "approved", "action": "approve", "roles": ["ADMIN"] },
-    { "from": "*", "to": "rejected", "action": "reject", "roles": ["MANAGER", "ADMIN"], "conditions": { "requireComment": true } }
+    { "from": "*", "to": "rejected", "action": "reject", "roles": ["MANAGER", "ADMIN"], "conditions": { "requireComment": true } },
+    { "from": ["pending_manager", "pending_hr"], "to": "returned_for_edit", "action": "return_for_edit", "roles": ["MANAGER", "ADMIN"] },
+    { "from": ["pending_manager", "pending_hr"], "to": "cancelled", "action": "cancel", "roles": ["USER", "ADMIN"] },
+    { "from": ["rejected", "cancelled", "returned_for_edit"], "to": "pending_manager", "action": "resubmit", "roles": ["USER", "ADMIN"] }
   ]
 }</textarea>
       <button onclick="createDefinition()">Create Definition</button>
@@ -88,15 +120,27 @@
     </div>
 
     <!-- 3. List Definitions -->
-    <div class="card">
+    <div class="card full-width">
       <h2>3. List Workflow Definitions</h2>
+      <div class="context">
+        <strong>Who:</strong> Admin or Manager<br>
+        <strong>What:</strong> View all workflow definitions in the system. Useful to verify a definition was created or to find its ID.
+      </div>
       <button onclick="listDefinitions()">Load Definitions</button>
       <div id="listDefResponse" class="response" style="display:none;"></div>
     </div>
 
+    <!-- ======= EMPLOYEE PHASE ======= -->
+    <div class="section-divider"><span>Phase 2 &mdash; Employee Submits a Request</span></div>
+
     <!-- 4. Submit a Form -->
-    <div class="card">
+    <div class="card full-width">
       <h2>4. Submit a Form (Trigger Workflow)</h2>
+      <div class="context">
+        <strong>Who:</strong> Employee<br>
+        <strong>What:</strong> An employee fills in a leave request form and submits it. The system validates the data against the form schema, creates the submission, and automatically starts the approval workflow. The submission enters <code>pending_manager</code> state.<br>
+        <strong>Real-world example:</strong> "I need 3 days of sick leave starting Monday." The employee fills in the reason and number of days, then clicks Submit. Their manager is now notified to review it.
+      </div>
       <label>Form ID</label>
       <input type="text" id="submitFormId" placeholder="UUID of the form">
       <label>Data (JSON)</label>
@@ -109,20 +153,37 @@
       <div id="submitResponse" class="response" style="display:none;"></div>
     </div>
 
+    <!-- ======= APPROVAL PHASE ======= -->
+    <div class="section-divider"><span>Phase 3 &mdash; Manager / HR Reviews</span></div>
+
     <!-- 5. Execute Workflow Action -->
     <div class="card">
       <h2>5. Execute Workflow Action</h2>
+      <div class="context">
+        <strong>Who:</strong> Depends on the action and current state<br>
+        <strong>Actions explained:</strong><br>
+        &bull; <strong>approve</strong> &mdash; <em>(Manager/Admin)</em> Approve and move to next step. At <code>pending_manager</code> it goes to HR; at <code>pending_hr</code> it becomes fully approved.<br>
+        &bull; <strong>reject</strong> &mdash; <em>(Manager/Admin)</em> Reject the request permanently. Comment required. Employee can resubmit later.<br>
+        &bull; <strong>return_for_edit</strong> &mdash; <em>(Manager/Admin)</em> Send back to employee for corrections. E.g., "Please attach a medical certificate." Employee can then resubmit.<br>
+        &bull; <strong>cancel</strong> &mdash; <em>(Employee/Admin)</em> Employee withdraws their own request. E.g., "I no longer need the day off."<br>
+        &bull; <strong>resubmit</strong> &mdash; <em>(Employee/Admin)</em> After rejection, cancellation, or return-for-edit, submit a new revision with updated data. Creates a <strong>new submission</strong> linked to the original.
+      </div>
       <label>Submission ID</label>
       <input type="text" id="actionSubmissionId" placeholder="UUID of the submission">
       <label>Action</label>
-      <select id="actionType">
+      <select id="actionType" onchange="toggleResubmitData()">
         <option value="approve">approve</option>
         <option value="reject">reject</option>
         <option value="cancel">cancel</option>
+        <option value="return_for_edit">return_for_edit</option>
         <option value="resubmit">resubmit</option>
       </select>
       <label>Comment (optional)</label>
       <input type="text" id="actionComment" placeholder="Optional comment...">
+      <div id="resubmitDataGroup">
+        <label>Resubmit Data (optional JSON - updates form data for the new revision)</label>
+        <textarea id="resubmitData" placeholder='{"reason": "Updated reason", "days": 3}'></textarea>
+      </div>
       <button class="success" onclick="executeAction()">Execute Action</button>
       <div id="actionResponse" class="response" style="display:none;"></div>
     </div>
@@ -130,18 +191,32 @@
     <!-- 6. Available Actions -->
     <div class="card">
       <h2>6. Check Available Actions</h2>
+      <div class="context">
+        <strong>Who:</strong> Any user viewing a submission<br>
+        <strong>What:</strong> Shows which buttons/actions the current user can see based on their role and the submission's current state. In a real UI, this determines which action buttons appear on the submission detail page.<br>
+        <strong>Example:</strong> A Manager viewing a <code>pending_manager</code> submission sees: approve, reject, return_for_edit. An Employee sees: cancel.
+      </div>
       <label>Submission ID</label>
       <input type="text" id="availSubmissionId" placeholder="UUID of the submission">
       <button class="secondary" onclick="getAvailableActions()">Check Actions</button>
       <div id="availResponse" class="response" style="display:none;"></div>
     </div>
 
+    <!-- ======= TRACKING PHASE ======= -->
+    <div class="section-divider"><span>Phase 4 &mdash; Track &amp; Audit</span></div>
+
     <!-- 7. Workflow History -->
     <div class="card full-width">
       <h2>7. Workflow History</h2>
+      <div class="context">
+        <strong>Who:</strong> Anyone with access to the submission<br>
+        <strong>What:</strong> View the full audit trail of a submission &mdash; every state change, who did it, and when. This is the timeline an employee sees when checking "What happened to my request?"<br>
+        <strong>Include Revisions:</strong> Check this to see the complete history across all resubmissions (revision 1, revision 2, etc.) in a single timeline.
+      </div>
       <label>Submission ID</label>
-      <div style="display:flex; gap:8px;">
+      <div style="display:flex; gap:8px; align-items:center;">
         <input type="text" id="historySubmissionId" placeholder="UUID of the submission" style="margin-bottom:0;">
+        <label style="margin-bottom:0; white-space:nowrap; font-weight:normal;"><input type="checkbox" id="includeRevisions"> Include Revisions</label>
         <button onclick="getHistory()" style="margin-bottom:0;">Load History</button>
       </div>
       <div id="historyResponse" style="margin-top:15px;"></div>
@@ -150,6 +225,11 @@
     <!-- 8. My Submissions -->
     <div class="card">
       <h2>8. My Submissions</h2>
+      <div class="context">
+        <strong>Who:</strong> Employee<br>
+        <strong>What:</strong> The employee's personal dashboard &mdash; lists all their own submissions with current status. This is what an employee sees when they open "My Requests" in the app.<br>
+        <strong>Shows:</strong> Form name, status (UNDER_REVIEW, APPROVED, REJECTED, CANCELLED, RETURNED), submission date.
+      </div>
       <button onclick="getMySubmissions()">Load My Submissions</button>
       <div id="mySubResponse" class="response" style="display:none;"></div>
     </div>
@@ -157,8 +237,80 @@
     <!-- 9. Admin Submissions -->
     <div class="card">
       <h2>9. All Submissions (Admin)</h2>
+      <div class="context">
+        <strong>Who:</strong> Admin or Manager<br>
+        <strong>What:</strong> The admin dashboard &mdash; lists ALL submissions from ALL employees. Used by HR or department managers to oversee pending requests, check workload, and monitor approval progress.<br>
+        <strong>Shows:</strong> Everything in "My Submissions" plus employee name and email.
+      </div>
       <button onclick="getAdminSubmissions()">Load All</button>
       <div id="adminSubResponse" class="response" style="display:none;"></div>
+    </div>
+
+    <!-- 10. Revisions -->
+    <div class="card full-width">
+      <h2>10. Submission Revisions</h2>
+      <div class="context">
+        <strong>Who:</strong> Anyone with access to the submission<br>
+        <strong>What:</strong> When an employee resubmits a request (after rejection, cancellation, or return-for-edit), a new revision is created. This shows the full revision chain: original submission (v1), first resubmission (v2), second resubmission (v3), etc.<br>
+        <strong>Real-world example:</strong> "My leave request was rejected (v1), I updated the dates and resubmitted (v2), it was approved (v2)." You can enter ANY submission ID in the chain to see all linked revisions.
+      </div>
+      <label>Submission ID (any revision in the chain)</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="revisionsSubmissionId" placeholder="UUID of the submission" style="margin-bottom:0;">
+        <button onclick="getRevisions()" style="margin-bottom:0;">Load Revisions</button>
+      </div>
+      <div id="revisionsResponse" class="response" style="display:none;"></div>
+    </div>
+
+    <!-- ======= TEST SCENARIOS ======= -->
+    <div class="section-divider"><span>Test Scenarios</span></div>
+
+    <div class="card full-width">
+      <h2>Quick Reference: Test Scenarios</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; font-size:13px;">
+        <div style="padding:12px; background:#e6f4ea; border-radius:6px;">
+          <strong style="color:#188038;">Happy Path (Approved)</strong><br><br>
+          1. Employee: Login &rarr; Submit form<br>
+          2. Manager: <code>approve</code><br>
+          3. HR/Admin: <code>approve</code><br>
+          4. Result: <span class="badge" style="background:#188038;color:#fff;">APPROVED</span>
+        </div>
+        <div style="padding:12px; background:#fce8e6; border-radius:6px;">
+          <strong style="color:#d93025;">Rejection &rarr; Resubmit</strong><br><br>
+          1. Employee: Submit form<br>
+          2. Manager: <code>reject</code> + comment<br>
+          3. Employee: <code>resubmit</code> with updated data<br>
+          4. New revision created, back to <code>pending_manager</code>
+        </div>
+        <div style="padding:12px; background:#fff3e0; border-radius:6px;">
+          <strong style="color:#e65100;">Return for Edit &rarr; Resubmit</strong><br><br>
+          1. Employee: Submit form<br>
+          2. Manager: <code>return_for_edit</code><br>
+          3. Employee: <code>resubmit</code> with corrections<br>
+          4. New revision, back to <code>pending_manager</code>
+        </div>
+        <div style="padding:12px; background:#e8eaed; border-radius:6px;">
+          <strong style="color:#5f6368;">Cancel &rarr; Resubmit</strong><br><br>
+          1. Employee: Submit form<br>
+          2. Employee: <code>cancel</code><br>
+          3. Employee: <code>resubmit</code> (optional new data)<br>
+          4. New revision, back to <code>pending_manager</code>
+        </div>
+        <div style="padding:12px; background:#e8f0fe; border-radius:6px;">
+          <strong style="color:#1a73e8;">Cancel (Final)</strong><br><br>
+          1. Employee: Submit form<br>
+          2. Employee: <code>cancel</code><br>
+          3. Result: <span class="badge" style="background:#5f6368;color:#fff;">CANCELLED</span><br>
+          4. No further actions (unless resubmit)
+        </div>
+        <div style="padding:12px; background:#f3e8fd; border-radius:6px;">
+          <strong style="color:#7b1fa2;">Full Revision Chain</strong><br><br>
+          1. Submit &rarr; reject &rarr; resubmit (v2)<br>
+          2. v2: return_for_edit &rarr; resubmit (v3)<br>
+          3. v3: approve &rarr; approve<br>
+          4. Check section 10 for full chain
+        </div>
+      </div>
     </div>
 
   </div>
@@ -189,11 +341,16 @@
       return { ok: res.ok, data: json };
     }
 
+    function toggleResubmitData() {
+      const action = document.getElementById('actionType').value;
+      document.getElementById('resubmitDataGroup').style.display = action === 'resubmit' ? 'block' : 'none';
+    }
+
     async function testConnection() {
       try {
         const { ok, data } = await apiCall('GET', '/auth/me');
         if (ok) {
-          alert(`Connected! User: ${data.data?.email || data.email || 'OK'}`);
+          alert(`Connected! User: ${data.data?.email || data.email || 'OK'} | Role: ${data.data?.role || data.role || 'N/A'}`);
         } else {
           alert(`Auth failed: ${data.message || 'Unauthorized'}`);
         }
@@ -255,6 +412,7 @@
           document.getElementById('actionSubmissionId').value = data.data.id;
           document.getElementById('availSubmissionId').value = data.data.id;
           document.getElementById('historySubmissionId').value = data.data.id;
+          document.getElementById('revisionsSubmissionId').value = data.data.id;
         }
       } catch (e) {
         showResponse('submitResponse', e.message, true);
@@ -270,8 +428,23 @@
         const comment = document.getElementById('actionComment').value.trim();
         if (comment) body.comment = comment;
 
+        if (body.action === 'resubmit') {
+          const dataStr = document.getElementById('resubmitData').value.trim();
+          if (dataStr) {
+            body.data = JSON.parse(dataStr);
+          }
+        }
+
         const { ok, data } = await apiCall('POST', '/workflows/action', body);
         showResponse('actionResponse', data, !ok);
+
+        // If resubmit succeeded, update submission ID fields to the new revision
+        if (ok && data.data?.newSubmissionId) {
+          document.getElementById('actionSubmissionId').value = data.data.newSubmissionId;
+          document.getElementById('availSubmissionId').value = data.data.newSubmissionId;
+          document.getElementById('historySubmissionId').value = data.data.newSubmissionId;
+          document.getElementById('revisionsSubmissionId').value = data.data.newSubmissionId;
+        }
       } catch (e) {
         showResponse('actionResponse', e.message, true);
       }
@@ -291,7 +464,9 @@
       const el = document.getElementById('historyResponse');
       try {
         const id = document.getElementById('historySubmissionId').value.trim();
-        const { ok, data } = await apiCall('GET', `/workflows/submissions/${id}/history`);
+        const includeRevisions = document.getElementById('includeRevisions').checked;
+        const query = includeRevisions ? '?includeRevisions=true' : '';
+        const { ok, data } = await apiCall('GET', `/workflows/submissions/${id}/history${query}`);
 
         if (!ok) {
           el.innerHTML = `<div class="response error">${JSON.stringify(data, null, 2)}</div>`;
@@ -299,12 +474,35 @@
         }
 
         const result = data.data || data;
+
+        // Handle revision chain history
+        if (result.revisions) {
+          let html = '<h3 style="margin-bottom:10px;">Revision Chain History</h3>';
+          for (const rev of result.revisions) {
+            html += `<div style="margin-bottom:16px; padding:10px; background:#f8f9fa; border-radius:4px;">`;
+            html += `<p><strong>Revision ${rev.revisionNumber}</strong> (${rev.submissionId}) | <strong>State:</strong> ${rev.currentStep} | <span class="badge badge-${rev.status === 'ACTIVE' ? 'active' : 'completed'}">${rev.status}</span></p>`;
+            html += '<div class="timeline" style="margin-top:8px;">';
+            for (const h of (rev.history || [])) {
+              html += `<div class="timeline-item">
+                <div class="action">${h.action}</div>
+                <div>${h.fromStep || '(start)'} &rarr; ${h.toStep}</div>
+                ${h.comment ? `<div><em>"${h.comment}"</em></div>` : ''}
+                <div class="meta">by ${h.actorId} at ${new Date(h.createdAt).toLocaleString()}</div>
+              </div>`;
+            }
+            html += '</div></div>';
+          }
+          el.innerHTML = html;
+          return;
+        }
+
+        // Single submission history
         let html = `<p><strong>Workflow:</strong> ${result.workflowName} | <strong>Current:</strong> ${result.currentStep} | <span class="badge badge-${result.status === 'ACTIVE' ? 'active' : 'completed'}">${result.status}</span></p>`;
         html += '<div class="timeline" style="margin-top:12px;">';
         for (const h of (result.history || [])) {
           html += `<div class="timeline-item">
             <div class="action">${h.action}</div>
-            <div>${h.fromStep || '(start)'} → ${h.toStep}</div>
+            <div>${h.fromStep || '(start)'} &rarr; ${h.toStep}</div>
             ${h.comment ? `<div><em>"${h.comment}"</em></div>` : ''}
             <div class="meta">by ${h.actorId} at ${new Date(h.createdAt).toLocaleString()}</div>
           </div>`;
@@ -331,6 +529,16 @@
         showResponse('adminSubResponse', data, !ok);
       } catch (e) {
         showResponse('adminSubResponse', e.message, true);
+      }
+    }
+
+    async function getRevisions() {
+      try {
+        const id = document.getElementById('revisionsSubmissionId').value.trim();
+        const { ok, data } = await apiCall('GET', `/submissions/${id}/revisions`);
+        showResponse('revisionsResponse', data, !ok);
+      } catch (e) {
+        showResponse('revisionsResponse', e.message, true);
       }
     }
   </script>

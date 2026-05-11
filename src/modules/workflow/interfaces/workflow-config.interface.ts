@@ -3,7 +3,7 @@ export interface WorkflowTransitionCondition {
 }
 
 export interface WorkflowTransition {
-  from: string;
+  from: string | string[];
   to: string;
   action: string;
   roles?: string[];
