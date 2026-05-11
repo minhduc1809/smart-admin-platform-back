@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, UnprocessableEntityException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ValidationEngine, FormSchema } from '../form/validation.engine';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
@@ -26,7 +31,10 @@ export class SubmissionService {
     }
 
     // 2. Validate data via ValidationEngine
-    const errors = this.validationEngine.validate(form.schema as unknown as FormSchema, dto.data);
+    const errors = this.validationEngine.validate(
+      form.schema as unknown as FormSchema,
+      dto.data,
+    );
     if (errors.length > 0) {
       throw new UnprocessableEntityException({
         message: 'validation.INVALID',
@@ -46,7 +54,9 @@ export class SubmissionService {
           formId: dto.formId,
           submittedBy: userId,
           data: dto.data,
-          status: SubmissionStatus.SUBMITTED, // Depending on workflow, it might start as SUBMITTED or UNDER_REVIEW
+          status: workflow
+            ? SubmissionStatus.UNDER_REVIEW
+            : SubmissionStatus.SUBMITTED,
         },
       });
 
@@ -68,6 +78,7 @@ export class SubmissionService {
       submittedBy: userId,
       status: dto.status,
       formId: dto.formId,
+      deletedAt: undefined,
     });
 
     const [data, total] = await this.prisma.$transaction([
@@ -94,6 +105,7 @@ export class SubmissionService {
     const where = FilterUtil.buildPrismaWhere({
       status: dto.status,
       formId: dto.formId,
+      deletedAt: undefined,
     });
 
     const [data, total] = await this.prisma.$transaction([
@@ -132,7 +144,11 @@ export class SubmissionService {
       throw new NotFoundException('submission.NOT_FOUND');
     }
 
-    if (role !== 'ADMIN' && role !== 'MANAGER' && submission.submittedBy !== userId) {
+    if (
+      role !== 'ADMIN' &&
+      role !== 'MANAGER' &&
+      submission.submittedBy !== userId
+    ) {
       throw new ForbiddenException('error.FORBIDDEN');
     }
 
@@ -142,6 +158,7 @@ export class SubmissionService {
   async recall(id: string, userId: string) {
     const submission = await this.prisma.submission.findUnique({
       where: { id },
+      include: { workflows: { where: { status: 'ACTIVE' } } },
     });
 
     if (!submission) {
@@ -152,13 +169,27 @@ export class SubmissionService {
       throw new ForbiddenException('error.FORBIDDEN');
     }
 
-    if (submission.status !== SubmissionStatus.DRAFT && submission.status !== SubmissionStatus.SUBMITTED) {
+    if (
+      submission.status !== SubmissionStatus.DRAFT &&
+      submission.status !== SubmissionStatus.SUBMITTED &&
+      submission.status !== SubmissionStatus.UNDER_REVIEW
+    ) {
       throw new ForbiddenException('workflow.NOT_ALLOWED');
     }
 
-    return this.prisma.submission.update({
-      where: { id },
-      data: { status: SubmissionStatus.DRAFT },
+    return this.prisma.$transaction(async (tx) => {
+      // Cancel any active workflow instances
+      for (const wf of submission.workflows) {
+        await tx.workflowInstance.update({
+          where: { id: wf.id },
+          data: { status: 'CANCELLED' },
+        });
+      }
+
+      return tx.submission.update({
+        where: { id },
+        data: { status: SubmissionStatus.DRAFT },
+      });
     });
   }
 }
