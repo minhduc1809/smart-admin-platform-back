@@ -23,6 +23,14 @@ enum SubmissionStatus {
   UNDER_REVIEW
   APPROVED
   REJECTED
+  CANCELLED
+  RETURNED
+}
+
+enum WorkflowInstanceStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
 }
 
 enum JobType {
@@ -107,22 +115,27 @@ model Form {
 }
 
 model Submission {
-  id          String           @id @default(uuid())
-  formId      String           @map("form_id")
-  data        Json             // Actual submitted data
-  status      SubmissionStatus @default(DRAFT)
-  submittedBy String           @map("submitted_by")
+  id                 String           @id @default(uuid())
+  formId             String           @map("form_id")
+  data               Json             // Actual submitted data
+  status             SubmissionStatus @default(DRAFT)
+  submittedBy        String           @map("submitted_by")
+  parentSubmissionId String?          @map("parent_submission_id")
+  revisionNumber     Int              @default(1) @map("revision_number")
 
   createdAt   DateTime         @default(now()) @map("created_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
 
-  form        Form               @relation(fields: [formId], references: [id], onDelete: Restrict)
-  user        User               @relation(fields: [submittedBy], references: [id])
-  workflows   WorkflowInstance[]
+  form             Form               @relation(fields: [formId], references: [id], onDelete: Restrict)
+  user             User               @relation(fields: [submittedBy], references: [id])
+  workflows        WorkflowInstance[]
+  parentSubmission Submission?        @relation("SubmissionRevisions", fields: [parentSubmissionId], references: [id])
+  childSubmissions Submission[]       @relation("SubmissionRevisions")
 
   @@map("submissions")
   @@index([formId])
   @@index([submittedBy])
+  @@index([parentSubmissionId])
 }
 
 model WorkflowDefinition {
@@ -144,10 +157,11 @@ model WorkflowDefinition {
 }
 
 model WorkflowInstance {
-  id           String   @id @default(uuid())
-  definitionId String   @map("definition_id")
-  submissionId String   @map("submission_id")
-  currentStep  String   @map("current_step")
+  id           String                 @id @default(uuid())
+  definitionId String                 @map("definition_id")
+  submissionId String                 @map("submission_id")
+  currentStep  String                 @map("current_step")
+  status       WorkflowInstanceStatus @default(ACTIVE)
 
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
