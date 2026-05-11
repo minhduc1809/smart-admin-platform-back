@@ -17,7 +17,7 @@ export interface FormSchema {
 @Injectable()
 export class ValidationEngine {
   validate(schema: FormSchema, data: any): { valid: boolean; errors: any[] } {
-    const errors = [];
+    const errors: any[] = [];
 
     if (!schema || !schema.fields) {
       return { valid: true, errors: [] };
