@@ -1,72 +1,134 @@
 import { Injectable } from '@nestjs/common';
 
 export interface SchemaField {
-  name: string;
+  key: string;
   label: string;
   type: string;
-  required?: boolean;
-  minLength?: number;
-  maxLength?: number;
-  options?: any[];
+  rules?: {
+    required?: boolean;
+    minLength?: number;
+    maxLength?: number;
+    min?: number;
+    max?: number;
+    regex?: string;
+    afterField?: string;
+    maxSizeMb?: number;
+    allowedTypes?: string[];
+    [key: string]: any;
+  };
 }
 
 export interface FormSchema {
+  formId?: string;
   fields: SchemaField[];
+}
+
+export interface ValidationError {
+  field: string;
+  i18nKey: string;
+  params?: Record<string, any>;
 }
 
 @Injectable()
 export class ValidationEngine {
-  validate(schema: FormSchema, data: any): { valid: boolean; errors: any[] } {
-    const errors: any[] = [];
+  validate(schema: FormSchema, payload: Record<string, any>): ValidationError[] {
+    const errors: ValidationError[] = [];
 
     if (!schema || !schema.fields) {
-      return { valid: true, errors: [] };
+      return errors;
     }
 
-    for (const field of schema.fields) {
-      const value = data[field.name];
+    for (const fieldDef of schema.fields) {
+      const value = payload[fieldDef.key];
+      const rules = fieldDef.rules ?? {};
 
-      // 1. Required Check
-      if (field.required && (value === undefined || value === null || value === '')) {
-        errors.push({ field: field.name, error: 'validation.REQUIRED' });
+      if (rules.required && this.isEmpty(value)) {
+        errors.push({ field: fieldDef.key, i18nKey: 'validation.required' });
+        continue;
+      }
+      if (this.isEmpty(value)) continue;
+
+      const typeError = this.checkType(fieldDef.key, value, fieldDef.type);
+      if (typeError) {
+        errors.push(typeError);
         continue;
       }
 
-      if (value === undefined || value === null || value === '') continue;
+      if (fieldDef.type === 'text') {
+        if (rules.minLength && String(value).length < rules.minLength) {
+          errors.push({
+            field: fieldDef.key,
+            i18nKey: 'validation.min_length',
+            params: { min: rules.minLength },
+          });
+        }
+        if (rules.maxLength && String(value).length > rules.maxLength) {
+          errors.push({
+            field: fieldDef.key,
+            i18nKey: 'validation.max_length',
+            params: { max: rules.maxLength },
+          });
+        }
+        if (rules.regex && !new RegExp(rules.regex).test(String(value))) {
+          errors.push({ field: fieldDef.key, i18nKey: 'validation.pattern' });
+        }
+      }
 
-      // 2. Type/Constraints Check
-      switch (field.type) {
-        case 'text':
-        case 'textarea':
-          if (typeof value !== 'string') {
-            errors.push({ field: field.name, error: 'validation.MUST_BE_STRING' });
-          } else {
-            if (field.minLength && value.length < field.minLength) {
-              errors.push({ field: field.name, error: 'validation.MIN_LENGTH' });
-            }
-            if (field.maxLength && value.length > field.maxLength) {
-              errors.push({ field: field.name, error: 'validation.MAX_LENGTH' });
-            }
-          }
-          break;
-        case 'number':
-          if (typeof value !== 'number') {
-            errors.push({ field: field.name, error: 'validation.MUST_BE_NUMBER' });
-          }
-          break;
-        case 'date':
-          if (isNaN(Date.parse(value))) {
-            errors.push({ field: field.name, error: 'validation.INVALID_DATE' });
-          }
-          break;
-        case 'select':
-          if (field.options && !field.options.includes(value)) {
-            errors.push({ field: field.name, error: 'validation.INVALID_OPTION' });
-          }
-          break;
+      if (fieldDef.type === 'number') {
+        if (rules.min !== undefined && Number(value) < rules.min) {
+          errors.push({
+            field: fieldDef.key,
+            i18nKey: 'validation.min_value',
+            params: { min: rules.min },
+          });
+        }
+        if (rules.max !== undefined && Number(value) > rules.max) {
+          errors.push({
+            field: fieldDef.key,
+            i18nKey: 'validation.max_value',
+            params: { max: rules.max },
+          });
+        }
       }
     }
 
-    return { valid: errors.length === 0, errors };
+    const crossErrors = this.checkCrossFields(schema, payload);
+    errors.push(...crossErrors);
+
+    return errors;
+  }
+
+  private checkCrossFields(
+    schema: FormSchema,
+    payload: Record<string, any>,
+  ): ValidationError[] {
+    const errors: ValidationError[] = [];
+    for (const fieldDef of schema.fields) {
+      const rules = fieldDef.rules ?? {};
+      if (rules.afterField) {
+        const refValue = payload[rules.afterField];
+        const thisValue = payload[fieldDef.key];
+        if (refValue && thisValue && new Date(thisValue) <= new Date(refValue)) {
+          errors.push({
+            field: fieldDef.key,
+            i18nKey: 'validation.date_after_field',
+            params: { refField: rules.afterField },
+          });
+        }
+      }
+    }
+    return errors;
+  }
+
+  private checkType(field: string, value: any, type: string): ValidationError | null {
+    if (type === 'number' && isNaN(Number(value)))
+      return { field, i18nKey: 'validation.type_number' };
+    if (type === 'date' && isNaN(Date.parse(value)))
+      return { field, i18nKey: 'validation.type_date' };
+    return null;
+  }
+
+  private isEmpty(value: any): boolean {
+    return value === undefined || value === null || String(value).trim() === '';
   }
 }
