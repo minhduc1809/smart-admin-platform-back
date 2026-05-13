@@ -270,4 +270,63 @@ export class WorkflowActionService {
       actions: availableActions,
     };
   }
+
+  async getPendingForUser(
+    userRole: string,
+    page: number = 1,
+    limit: number = 20,
+  ) {
+    const skip = (page - 1) * limit;
+
+    // Lấy tất cả workflow instances đang ACTIVE
+    const [instances, total] = await this.prisma.$transaction([
+      this.prisma.workflowInstance.findMany({
+        where: { status: 'ACTIVE' },
+        include: {
+          definition: true,
+          submission: {
+            include: {
+              form: { select: { name: true } },
+              user: { select: { email: true, username: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.workflowInstance.count({ where: { status: 'ACTIVE' } }),
+    ]);
+
+    // Lọc ra những instance mà userRole có quyền thực hiện hành động tiếp theo
+    const pending = instances.filter((inst) => {
+      const config = inst.definition.config as unknown as WorkflowConfig;
+      const currentState = inst.currentStep;
+      return config.transitions.some((t) => {
+        const fromMatch = Array.isArray(t.from)
+          ? t.from.includes(currentState)
+          : t.from === currentState || t.from === '*';
+        const roleMatch =
+          !t.roles || t.roles.length === 0 || t.roles.includes(userRole);
+        return fromMatch && roleMatch;
+      });
+    });
+
+    return {
+      items: pending.map((inst) => ({
+        instanceId: inst.id,
+        submissionId: inst.submissionId,
+        currentStep: inst.currentStep,
+        formName: inst.submission.form.name,
+        submittedBy: inst.submission.user.email,
+        createdAt: inst.createdAt,
+      })),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
 }
