@@ -1,5 +1,7 @@
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
+import { Injectable } from '@nestjs/common';
+import { OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { SubmissionStatus, JobStatus } from '@prisma/client';
 import * as ExcelJS from 'exceljs';
@@ -16,13 +18,17 @@ interface ExportJobPayload {
 }
 
 @Processor('export-queue')
-export class ExportProcessor extends WorkerHost {
+@Injectable()
+export class ExportProcessor extends WorkerHost implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
   ) {
     super();
-    // Ensure exports directory exists
+  }
+
+  // Chạy sau khi module đã khởi tạo xong — an toàn hơn constructor
+  onModuleInit() {
     const exportDir = path.join(process.cwd(), 'exports');
     if (!fs.existsSync(exportDir)) {
       fs.mkdirSync(exportDir, { recursive: true });
