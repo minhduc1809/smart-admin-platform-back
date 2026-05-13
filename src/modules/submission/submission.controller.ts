@@ -28,7 +28,7 @@ export class SubmissionController {
   @Post()
   @ApiOperation({ summary: 'Submit a new form' })
   create(
-    @CurrentUser('userId') userId: string,
+    @CurrentUser('id') userId: string,
     @Body() dto: CreateSubmissionDto,
   ) {
     return this.submissionService.create(userId, dto);
@@ -37,7 +37,7 @@ export class SubmissionController {
   @Get()
   @ApiOperation({ summary: 'Get my submissions' })
   findMySubmissions(
-    @CurrentUser('userId') userId: string,
+    @CurrentUser('id') userId: string,
     @Query() query: SubmissionFilterDto,
   ) {
     return this.submissionService.findMySubmissions(userId, query);
@@ -63,8 +63,27 @@ export class SubmissionController {
   @ApiOperation({ summary: 'Recall a submission to DRAFT status' })
   recall(
     @Param('id') id: string,
-    @CurrentUser('userId') userId: string,
+    @CurrentUser('id') userId: string,
   ) {
     return this.submissionService.recall(id, userId);
+  }
+
+  @Post(':id/resubmit')
+  @ApiOperation({ summary: 'Resubmit a rejected/cancelled/returned submission as a new revision' })
+  resubmit(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { data?: Record<string, any> },
+  ) {
+    return this.submissionService.resubmit(userId, id, body.data);
+  }
+
+  @Get(':id/revisions')
+  @ApiOperation({ summary: 'Get all revisions of a submission' })
+  getRevisions(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.submissionService.getRevisions(id, user.id, user.role);
   }
 }
