@@ -2,6 +2,8 @@ import {
   Controller,
   Post,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   UseInterceptors,
   UploadedFile,
@@ -63,31 +65,12 @@ export class FileController {
     return this.fileService.uploadFile(file, userId);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Download an uploaded file' })
-  async downloadUploadedFile(
-    @Param('id') id: string,
-    @CurrentUser() user: any,
-    @Res() res: Response,
-  ) {
-    const fileRecord = await this.fileService.getFileRecord(id, user.id, user.role);
-    
-    // Check if physical file exists
-    const fullPath = join(process.cwd(), fileRecord.storedPath);
-    if (!existsSync(fullPath)) {
-      throw new NotFoundException('file.PHYSICAL_NOT_FOUND');
-    }
-
-    res.setHeader('Content-Type', fileRecord.mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileRecord.originalName}"`);
-    
-    const fileStream = createReadStream(fullPath);
-    fileStream.pipe(res);
-  }
+  // --- Export routes must come BEFORE /:id to avoid route conflict ---
 
   @Post('export')
+  @HttpCode(HttpStatus.ACCEPTED)
   @Roles(Role.ADMIN, Role.MANAGER)
-  @ApiOperation({ summary: 'Tạo job xuất file Excel (Bất đồng bộ)' })
+  @ApiOperation({ summary: 'Tạo job xuất file Excel (Bất đồng bộ) — trả về 202 Accepted' })
   async exportSubmissions(
     @CurrentUser('id') userId: string,
     @Body() dto: ExportFilterDto,
@@ -123,7 +106,33 @@ export class FileController {
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="export-${job.id}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''export-${job.id}.xlsx`);
+    
+    const fileStream = createReadStream(fullPath);
+    fileStream.pipe(res);
+  }
+
+  // --- Generic /:id route MUST be last to not shadow specific routes above ---
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Download an uploaded file by ID' })
+  async downloadUploadedFile(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Res() res: Response,
+  ) {
+    const fileRecord = await this.fileService.getFileRecord(id, user.id, user.role);
+    
+    // Check if physical file exists
+    const fullPath = join(process.cwd(), fileRecord.storedPath);
+    if (!existsSync(fullPath)) {
+      throw new NotFoundException('file.PHYSICAL_NOT_FOUND');
+    }
+
+    // RFC 5987 encoding for Unicode filenames
+    const encodedName = encodeURIComponent(fileRecord.originalName);
+    res.setHeader('Content-Type', fileRecord.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedName}`);
     
     const fileStream = createReadStream(fullPath);
     fileStream.pipe(res);
