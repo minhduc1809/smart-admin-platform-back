@@ -88,6 +88,20 @@ export class WorkflowController {
     return this.actionService.execute(user.id, user.role, dto);
   }
 
+  @Get('pending')
+  @ApiOperation({ summary: 'Danh sách submission đang chờ tôi duyệt' })
+  getPending(
+    @CurrentUser() user: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.actionService.getPendingForUser(
+      user.role,
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 20,
+    );
+  }
+
   // --- Workflow Query ---
 
   @Get('submissions/:submissionId/history')

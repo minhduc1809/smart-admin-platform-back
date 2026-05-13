@@ -52,7 +52,7 @@ export class WorkflowDefinitionService {
     });
 
     if (!definition) {
-      throw new NotFoundException('workflow.INSTANCE_NOT_FOUND');
+      throw new NotFoundException('workflow.DEFINITION_NOT_FOUND');
     }
 
     return definition;
