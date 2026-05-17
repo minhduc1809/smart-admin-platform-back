@@ -24,7 +24,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role, JobStatus } from '@prisma/client';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { createReadStream, existsSync } from 'fs';
 import { join } from 'path';
 
