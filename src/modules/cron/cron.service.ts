@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
 import { JobStatus, JobType, WorkflowInstanceStatus } from '@prisma/client';
 import * as fs from 'fs';
+import * as path from 'path';
 
 type WorkflowConfig = {
   transitions?: Array<{
@@ -38,20 +39,45 @@ export class CronService {
       select: { id: true, result: true },
     });
 
+    let cleaned = 0;
+    let deleteFailures = 0;
+
     for (const job of doneExports) {
       const result = job.result as { filepath?: string } | null;
       const filepath = result?.filepath;
+      let shouldDeleteRecord = true;
 
-      if (filepath && fs.existsSync(filepath)) {
-        fs.unlinkSync(filepath);
+      if (filepath) {
+        const fullPath = path.isAbsolute(filepath)
+          ? filepath
+          : path.join(process.cwd(), filepath);
+
+        if (fs.existsSync(fullPath)) {
+          try {
+            fs.unlinkSync(fullPath);
+          } catch (error) {
+            shouldDeleteRecord = false;
+            deleteFailures += 1;
+            this.logger.error(
+              `Failed to delete export file: ${fullPath}`,
+              error instanceof Error ? error.stack : String(error),
+            );
+          }
+        }
       }
 
-      await this.prisma.jobRecord.delete({
-        where: { id: job.id },
-      });
+      if (shouldDeleteRecord) {
+        await this.prisma.jobRecord.delete({
+          where: { id: job.id },
+        });
+        cleaned += 1;
+      }
     }
 
-    this.logger.log(`Cleaned ${doneExports.length} expired export jobs.`);
+    this.logger.log(`Cleaned ${cleaned} expired export jobs.`);
+    if (deleteFailures > 0) {
+      this.logger.warn(`Failed to delete ${deleteFailures} export files.`);
+    }
   }
 
   @Cron('0 * * * *', {
