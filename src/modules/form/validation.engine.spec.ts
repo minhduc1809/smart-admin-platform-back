@@ -33,6 +33,18 @@ describe('ValidationEngine', () => {
         type: 'date',
         rules: { afterField: 'birthday' },
       },
+      {
+        key: 'department',
+        label: 'Department',
+        type: 'select',
+        rules: { required: true, options: ['HR', 'IT'] },
+      },
+      {
+        key: 'attachment',
+        label: 'Attachment',
+        type: 'file',
+        rules: { maxSizeMb: 5, allowedTypes: ['pdf', 'docx'] },
+      },
     ],
   };
 
@@ -42,6 +54,12 @@ describe('ValidationEngine', () => {
       age: 30,
       birthday: '1994-01-01',
       contractDate: '2024-01-01',
+      department: 'HR',
+      attachment: {
+        name: 'policy.pdf',
+        size: 1024,
+        mimeType: 'application/pdf',
+      },
     };
     const result = engine.validate(schema, data);
     expect(result).toHaveLength(0);
@@ -98,10 +116,63 @@ describe('ValidationEngine', () => {
       age: 30,
       birthday: '2024-01-01',
       contractDate: '2023-01-01', // Before birthday
+      department: 'HR',
     };
     const result = engine.validate(schema, data);
     expect(result).toContainEqual(
       expect.objectContaining({ field: 'contractDate', i18nKey: 'validation.date_after_field' })
+    );
+  });
+
+  it('should return error if select option is invalid', () => {
+    const data = {
+      fullName: 'John Doe',
+      age: 30,
+      birthday: '1994-01-01',
+      contractDate: '2024-01-01',
+      department: 'SALES',
+    };
+    const result = engine.validate(schema, data);
+    expect(result).toContainEqual(
+      expect.objectContaining({ field: 'department', i18nKey: 'validation.invalid_option' })
+    );
+  });
+
+  it('should return error if file type is not allowed', () => {
+    const data = {
+      fullName: 'John Doe',
+      age: 30,
+      birthday: '1994-01-01',
+      contractDate: '2024-01-01',
+      department: 'HR',
+      attachment: {
+        name: 'image.png',
+        size: 1024,
+        mimeType: 'image/png',
+      },
+    };
+    const result = engine.validate(schema, data);
+    expect(result).toContainEqual(
+      expect.objectContaining({ field: 'attachment', i18nKey: 'validation.file_type_not_allowed' })
+    );
+  });
+
+  it('should return error if file size exceeds max', () => {
+    const data = {
+      fullName: 'John Doe',
+      age: 30,
+      birthday: '1994-01-01',
+      contractDate: '2024-01-01',
+      department: 'HR',
+      attachment: {
+        name: 'policy.pdf',
+        size: 6 * 1024 * 1024,
+        mimeType: 'application/pdf',
+      },
+    };
+    const result = engine.validate(schema, data);
+    expect(result).toContainEqual(
+      expect.objectContaining({ field: 'attachment', i18nKey: 'validation.file_too_large' })
     );
   });
 });
