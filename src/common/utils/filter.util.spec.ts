@@ -20,13 +20,28 @@ describe('FilterUtil', () => {
   });
 
   it('should apply between operator', () => {
+    const now = new Date();
+    const from = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0),
+    );
+    const to = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
     const filters: FilterDto[] = [
-      { field: 'createdAt', operator: 'between', values: ['2026-01-01', '2026-01-31'] },
+      { field: 'createdAt', operator: 'between', values: [from, to] },
     ];
     const where = FilterUtil.buildPrismaWhere({}, filters);
     expect(where.createdAt).toEqual({
-      gte: '2026-01-01',
-      lte: '2026-01-31',
+      gte: from,
+      lte: to,
     });
   });
 
@@ -56,4 +71,3 @@ describe('FilterUtil', () => {
     expect(where.deletedAt).toBeNull();
   });
 });
-
