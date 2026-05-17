@@ -14,6 +14,7 @@ import { UserModule } from './modules/user/user.module';
 import { FormModule } from './modules/form/form.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { KeycloakSyncGuard } from './common/guards/keycloak-sync.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 
 import { SubmissionModule } from './modules/submission/submission.module';
 import { WorkflowModule } from './modules/workflow/workflow.module';
@@ -68,6 +69,10 @@ import { ConfigService } from '@nestjs/config';
     {
       provide: APP_GUARD,
       useClass: KeycloakSyncGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
 })
