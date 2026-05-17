@@ -49,7 +49,10 @@
     "MUST_BE_STRING": "Must be a string",
     "MUST_BE_NUMBER": "Must be a number",
     "INVALID_DATE": "Invalid date format",
-    "INVALID_OPTION": "Selection not in allowed options"
+    "INVALID_OPTION": "Selection not in allowed options",
+    "invalid_option": "Selection not in allowed options",
+    "file_too_large": "File exceeds {maxMb} MB",
+    "file_type_not_allowed": "File type is not allowed"
   },
   "error": {
     "INTERNAL": "Internal server error",
