@@ -19,6 +19,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { SubmissionModule } from './modules/submission/submission.module';
 import { WorkflowModule } from './modules/workflow/workflow.module';
 import { FileModule } from './modules/file/file.module';
+import { NotificationModule } from './modules/notification/notification.module';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 
@@ -54,6 +55,7 @@ import { ConfigService } from '@nestjs/config';
     SubmissionModule,
     WorkflowModule,
     FileModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [
