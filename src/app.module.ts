@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import * as path from 'path';
 
 import { AppController } from './app.controller';
@@ -21,6 +22,7 @@ import { WorkflowModule } from './modules/workflow/workflow.module';
 import { FileModule } from './modules/file/file.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { CronModule } from './modules/cron/cron.module';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 
@@ -28,6 +30,7 @@ import { ConfigService } from '@nestjs/config';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -58,6 +61,7 @@ import { ConfigService } from '@nestjs/config';
     FileModule,
     NotificationModule,
     DashboardModule,
+    CronModule,
   ],
   controllers: [AppController],
   providers: [
