@@ -50,7 +50,10 @@
     "type_number": "Phải là số hợp lệ",
     "type_date": "Phải là ngày hợp lệ (ISO 8601)",
     "pattern": "Không đúng định dạng yêu cầu",
-    "date_after_field": "Phải sau ngày {refField}"
+    "date_after_field": "Phải sau ngày {refField}",
+    "invalid_option": "Giá trị không nằm trong danh sách cho phép",
+    "file_too_large": "Dung lượng tệp vượt quá {maxMb} MB",
+    "file_type_not_allowed": "Định dạng tệp không được phép"
   },
   "error": {
     "INTERNAL": "Lỗi hệ thống ngoại lệ",
