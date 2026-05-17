@@ -173,4 +173,42 @@ export class NotificationService {
       },
     });
   }
+
+  async notifyApproversReminder(
+    submissionId: string,
+    approverRoles: string[],
+    formName: string,
+  ) {
+    if (!approverRoles.length) return { sent: 0 };
+
+    const approvers = await this.prisma.user.findMany({
+      where: {
+        role: { in: approverRoles as any[] },
+        deletedAt: null,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+
+    if (!approvers.length) return { sent: 0 };
+
+    await Promise.all(
+      approvers.map((approver) =>
+        this.prisma.notification.create({
+          data: {
+            userId: approver.id,
+            title: 'Pending Approval Reminder',
+            content: `Submission for form "${formName}" is waiting for your approval.`,
+            type: 'WARNING',
+            metadata: {
+              submissionId,
+              reminder: true,
+            },
+          },
+        }),
+      ),
+    );
+
+    return { sent: approvers.length };
+  }
 }
