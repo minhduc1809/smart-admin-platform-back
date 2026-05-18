@@ -27,18 +27,18 @@ export class WorkflowActionService {
       return this.handleResubmit(actorId, actorRole, dto);
     }
 
-    const instance = await this.prisma.workflowInstance.findFirst({
-      where: {
-        submissionId: dto.submissionId,
-        status: 'ACTIVE',
-      },
-    });
-
-    if (!instance) {
-      throw new NotFoundException('workflow.INSTANCE_NOT_FOUND');
-    }
-
     const result = await this.prisma.$transaction(async (tx) => {
+      const instance = await tx.workflowInstance.findFirst({
+        where: {
+          submissionId: dto.submissionId,
+          status: 'ACTIVE',
+        },
+      });
+
+      if (!instance) {
+        throw new NotFoundException('workflow.INSTANCE_NOT_FOUND');
+      }
+
       return await this.workflowEngine.executeAction(
         tx,
         instance.id,
