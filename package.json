@@ -45,7 +45,8 @@
     "passport-jwt": "^4.0.1",
     "prisma": "^5.14.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "safe-regex2": "^5.1.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
