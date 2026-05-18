@@ -28,6 +28,33 @@ describe('WorkflowEngine', () => {
     ).toThrow(ForbiddenException);
   });
 
+  it('validatePermission throws when roles is empty', () => {
+    expect(() =>
+      engine.validatePermission(
+        { from: 'draft', to: 'submitted', action: 'submit', roles: [] },
+        'ADMIN',
+      ),
+    ).toThrow(ForbiddenException);
+  });
+
+  it('validatePermission throws when roles is undefined', () => {
+    expect(() =>
+      engine.validatePermission(
+        { from: 'draft', to: 'submitted', action: 'submit' } as any,
+        'ADMIN',
+      ),
+    ).toThrow(ForbiddenException);
+  });
+
+  it('validatePermission passes when role is in list', () => {
+    expect(() =>
+      engine.validatePermission(
+        { from: 'draft', to: 'submitted', action: 'submit', roles: ['ADMIN', 'MANAGER'] },
+        'ADMIN',
+      ),
+    ).not.toThrow();
+  });
+
   it('isCompleted returns true for final states', () => {
     const config: WorkflowConfig = {
       states: ['draft', 'approved'],

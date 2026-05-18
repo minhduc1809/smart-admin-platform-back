@@ -135,10 +135,11 @@ export class WorkflowEngine {
   }
 
   validatePermission(transition: WorkflowTransition, actorRole: string): void {
-    if (transition.roles && transition.roles.length > 0) {
-      if (!transition.roles.includes(actorRole)) {
-        throw new ForbiddenException('workflow.NOT_ALLOWED');
-      }
+    if (!transition.roles || transition.roles.length === 0) {
+      throw new ForbiddenException('workflow.NOT_ALLOWED');
+    }
+    if (!transition.roles.includes(actorRole)) {
+      throw new ForbiddenException('workflow.NOT_ALLOWED');
     }
   }
 
