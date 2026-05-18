@@ -103,7 +103,7 @@ export class WorkflowEngine {
     });
 
     // Sync submission status
-    const submissionStatus = this.mapToSubmissionStatus(config, newState);
+    const submissionStatus = this.mapToSubmissionStatus(config, newState, transition);
     await tx.submission.update({
       where: { id: instance.submissionId },
       data: { status: submissionStatus },
@@ -149,16 +149,39 @@ export class WorkflowEngine {
   private mapToSubmissionStatus(
     config: WorkflowConfig,
     state: string,
+    transition?: WorkflowTransition,
   ): SubmissionStatus {
+    // 1. Explicit mapping on transition
+    if (transition?.submissionStatus) {
+      return transition.submissionStatus;
+    }
+
+    // 2. Explicit mapping in config
+    if (config.statusMapping && config.statusMapping[state]) {
+      return config.statusMapping[state];
+    }
+
     const lower = state.toLowerCase();
-    if (lower.includes('cancel')) return SubmissionStatus.CANCELLED;
-    if (lower.includes('return')) return SubmissionStatus.RETURNED;
+
+    // 3. Final states mapping
     if (config.finalStates.includes(state)) {
       if (lower.includes('reject')) {
         return SubmissionStatus.REJECTED;
       }
+      if (lower.includes('cancel')) {
+        return SubmissionStatus.CANCELLED;
+      }
       return SubmissionStatus.APPROVED;
     }
+
+    // 4. Keyword fallbacks (refined to avoid false positives like "return_to_pool")
+    if (lower === 'cancel' || lower === 'cancelled') return SubmissionStatus.CANCELLED;
+    if (lower === 'return' || lower === 'returned') return SubmissionStatus.RETURNED;
+
+    // Last resort fallbacks if we still have includes for backward compatibility, 
+    // but maybe we should just stick to the above.
+    // To minimize breakage, we can keep them but only if not matched by more specific rules.
+
     return SubmissionStatus.UNDER_REVIEW;
   }
 }
