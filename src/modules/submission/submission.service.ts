@@ -11,7 +11,7 @@ import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { SubmissionFilterDto } from './dto/submission-filter.dto';
 import { WorkflowEngine } from '../workflow/workflow.engine';
 import { FilterUtil } from '../../common/utils/filter.util';
-import { SubmissionStatus } from '@prisma/client';
+import { SubmissionStatus, Role } from '@prisma/client';
 
 @Injectable()
 export class SubmissionService {
@@ -72,15 +72,14 @@ export class SubmissionService {
   }
 
   async findMySubmissions(userId: string, dto: SubmissionFilterDto) {
-    const page = dto.page ?? 1;
-    const limit = dto.limit ?? 20;
+    const page = Math.max(1, dto.page ?? 1);
+    const limit = Math.max(1, dto.limit ?? 20);
 
-    const where = FilterUtil.buildPrismaWhere({
+    const where = this.buildWhere({
       submittedBy: userId,
       status: dto.status,
       formId: dto.formId,
     });
-    delete where.deletedAt;
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.submission.findMany({
@@ -100,14 +99,13 @@ export class SubmissionService {
   }
 
   async findAll(dto: SubmissionFilterDto) {
-    const page = dto.page ?? 1;
-    const limit = dto.limit ?? 20;
+    const page = Math.max(1, dto.page ?? 1);
+    const limit = Math.max(1, dto.limit ?? 20);
 
-    const where = FilterUtil.buildPrismaWhere({
+    const where = this.buildWhere({
       status: dto.status,
       formId: dto.formId,
     });
-    delete where.deletedAt;
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.submission.findMany({
@@ -129,6 +127,14 @@ export class SubmissionService {
     };
   }
 
+  private buildWhere(filters: any) {
+    const where = FilterUtil.buildPrismaWhere(filters);
+    if (where.hasOwnProperty('deletedAt')) {
+      delete where.deletedAt;
+    }
+    return where;
+  }
+
   async findOne(id: string, userId: string, role: string) {
     const submission = await this.prisma.submission.findUnique({
       where: { id },
@@ -146,8 +152,8 @@ export class SubmissionService {
     }
 
     if (
-      role !== 'ADMIN' &&
-      role !== 'MANAGER' &&
+      role !== Role.ADMIN &&
+      role !== Role.MANAGER &&
       submission.submittedBy !== userId
     ) {
       throw new ForbiddenException('error.FORBIDDEN');
@@ -322,7 +328,7 @@ export class SubmissionService {
     });
 
     // Authorization check
-    if (role !== 'ADMIN' && role !== 'MANAGER') {
+    if (role !== Role.ADMIN && role !== Role.MANAGER) {
       const unauthorized = revisions.some((s) => s.submittedBy !== userId);
       if (unauthorized) throw new ForbiddenException('error.FORBIDDEN');
     }

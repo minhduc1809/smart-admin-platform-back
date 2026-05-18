@@ -13,9 +13,12 @@ export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateUserDto) {
+    const email = dto.email.toLowerCase();
+    const username = dto.username.toLowerCase();
+
     const existing = await this.prisma.user.findFirst({
       where: {
-        OR: [{ email: dto.email }, { username: dto.username }],
+        OR: [{ email }, { username }],
       },
     });
 
@@ -26,8 +29,8 @@ export class UserService {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email,
-        username: dto.username,
+        email,
+        username,
         passwordHash: hashedPassword,
         firstName: dto.firstName,
         lastName: dto.lastName,
@@ -52,16 +55,16 @@ export class UserService {
     return this.getProfile(id); // Re-use getProfile since it selects the safe fields
   }
 
-  async findAll(params: {
-    search?: string;
-    role?: Role;
-    status?: string;
+  async findMany(params: {
     page?: number;
     limit?: number;
+    role?: Role;
+    status?: string;
+    search?: string;
     sort?: string;
   }) {
-    const page = params.page ?? 1;
-    const limit = params.limit ?? 10;
+    const page = Math.max(1, params.page ?? 1);
+    const limit = Math.max(1, params.limit ?? 10);
     const skip = (page - 1) * limit;
 
     const where: Prisma.UserWhereInput = { deletedAt: null };
@@ -80,7 +83,7 @@ export class UserService {
     }
 
     if (params.search) {
-      const term = params.search.trim();
+      const term = params.search.trim().toLowerCase();
       if (term) {
         where.OR = [
           { email: { contains: term, mode: 'insensitive' } },
@@ -124,8 +127,8 @@ export class UserService {
   }
 
   async findPage(dto: UserPageDto) {
-    const page = dto.page ?? 1;
-    const limit = dto.limit ?? 10;
+    const page = Math.max(1, dto.page ?? 1);
+    const limit = Math.max(1, dto.limit ?? 10);
 
     const condition = dto.condition && typeof dto.condition === 'object' ? dto.condition : {};
     const filters = Array.isArray(dto.filters) ? dto.filters : [];
@@ -260,18 +263,47 @@ export class UserService {
   }
 
   async update(id: string, dto: UpdateUserDto) {
-    await this.getProfile(id); // Check existence
+    const user = await this.getProfile(id);
+
+    const data: any = { ...dto };
+    if (dto.email) data.email = dto.email.toLowerCase();
+    if (dto.username) data.username = dto.username.toLowerCase();
+
+    if (data.email || data.username) {
+      const existing = await this.prisma.user.findFirst({
+        where: {
+          id: { not: id },
+          OR: [
+            data.email ? { email: data.email } : null,
+            data.username ? { username: data.username } : null,
+          ].filter(Boolean) as Prisma.UserWhereInput[],
+        },
+      });
+      if (existing) throw new ConflictException('user.ALREADY_EXISTS');
+    }
+
     return this.prisma.user.update({
       where: { id },
-      data: dto,
+      data,
     });
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
-    await this.getProfile(userId); // Check existence
+    const user = await this.getProfile(userId);
+
+    const data: any = { ...dto };
+    if (dto.email) data.email = dto.email.toLowerCase();
+
+    if (data.email && data.email !== user.email) {
+      const existing = await this.prisma.user.findFirst({
+        where: { email: data.email, id: { not: userId } },
+      });
+      if (existing) throw new ConflictException('user.EMAIL_EXISTS');
+    }
+
     return this.prisma.user.update({
       where: { id: userId },
-      data: dto,
+      data: data,
       select: {
         id: true,
         email: true,

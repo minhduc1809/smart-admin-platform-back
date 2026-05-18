@@ -28,11 +28,26 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
   ) {
-    this.keycloakUrl = process.env.KEYCLOAK_URL || 'http://localhost:8080';
-    this.realm = process.env.KEYCLOAK_REALM || 'smart-admin';
-    this.clientId = process.env.KEYCLOAK_CLIENT_ID || 'smart-admin-backend';
-    this.clientSecret =
-      process.env.KEYCLOAK_CLIENT_SECRET || 'smart-admin-backend-secret';
+    const isProd = process.env.NODE_ENV === 'production';
+
+    const getEnv = (key: string, defaultValue?: string): string => {
+      const value = process.env[key];
+      if (!value) {
+        if (isProd) {
+          throw new Error(`Environment variable ${key} is required in production`);
+        }
+        return defaultValue || '';
+      }
+      return value;
+    };
+
+    this.keycloakUrl = getEnv('KEYCLOAK_URL', 'http://localhost:8080');
+    this.realm = getEnv('KEYCLOAK_REALM', 'smart-admin');
+    this.clientId = getEnv('KEYCLOAK_CLIENT_ID', 'smart-admin-backend');
+    this.clientSecret = getEnv(
+      'KEYCLOAK_CLIENT_SECRET',
+      'smart-admin-backend-secret',
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -41,7 +56,7 @@ export class AuthService {
 
   async login(email: string, pass: string) {
     const user = await this.prisma.user.findFirst({
-      where: { email, deletedAt: null },
+      where: { email: email.toLowerCase(), deletedAt: null },
     });
     if (!user || !user.isActive || !user.passwordHash)
       throw new UnauthorizedException('error.INVALID_CREDENTIALS');
@@ -84,9 +99,12 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto) {
+    const email = dto.email.toLowerCase();
+    const username = dto.username.toLowerCase();
+
     const existing = await this.prisma.user.findFirst({
       where: {
-        OR: [{ email: dto.email }, { username: dto.username }],
+        OR: [{ email }, { username }],
       },
     });
 
@@ -97,8 +115,8 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email,
-        username: dto.username,
+        email,
+        username,
         passwordHash: hashedPassword,
         firstName: dto.firstName,
         lastName: dto.lastName,
