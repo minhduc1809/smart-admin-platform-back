@@ -27,18 +27,18 @@ export class WorkflowActionService {
       return this.handleResubmit(actorId, actorRole, dto);
     }
 
-    const instance = await this.prisma.workflowInstance.findFirst({
-      where: {
-        submissionId: dto.submissionId,
-        status: 'ACTIVE',
-      },
-    });
-
-    if (!instance) {
-      throw new NotFoundException('workflow.INSTANCE_NOT_FOUND');
-    }
-
     const result = await this.prisma.$transaction(async (tx) => {
+      const instance = await tx.workflowInstance.findFirst({
+        where: {
+          submissionId: dto.submissionId,
+          status: 'ACTIVE',
+        },
+      });
+
+      if (!instance) {
+        throw new NotFoundException('workflow.INSTANCE_NOT_FOUND');
+      }
+
       return await this.workflowEngine.executeAction(
         tx,
         instance.id,
@@ -278,25 +278,49 @@ export class WorkflowActionService {
   ) {
     const skip = (page - 1) * limit;
 
-    // Lấy tất cả workflow instances đang ACTIVE
-    const [instances, total] = await this.prisma.$transaction([
-      this.prisma.workflowInstance.findMany({
-        where: { status: 'ACTIVE' },
-        include: {
-          definition: true,
-          submission: {
-            include: {
-              form: { select: { name: true } },
-              user: { select: { email: true, username: true } },
-            },
+    // Pass 1: fetch all active instance IDs with their config (lightweight)
+    const allActive = await this.prisma.workflowInstance.findMany({
+      where: { status: 'ACTIVE' },
+      select: {
+        id: true,
+        currentStep: true,
+        definition: { select: { config: true } },
+      },
+    });
+
+    // Filter by role in memory to get the matching IDs
+    const matchingIds = allActive
+      .filter((inst) => {
+        const config = inst.definition.config as unknown as WorkflowConfig;
+        return config.transitions.some((t) => {
+          const fromMatch = Array.isArray(t.from)
+            ? t.from.includes(inst.currentStep)
+            : t.from === inst.currentStep || t.from === '*';
+          const roleMatch =
+            !t.roles || t.roles.length === 0 || t.roles.includes(userRole);
+          return fromMatch && roleMatch;
+        });
+      })
+      .map((inst) => inst.id);
+
+    const total = matchingIds.length;
+
+    // Pass 2: paginate over the filtered IDs with full includes
+    const instances = await this.prisma.workflowInstance.findMany({
+      where: { id: { in: matchingIds } },
+      include: {
+        submission: {
+          include: {
+            form: { select: { name: true } },
+            user: { select: { email: true, username: true } },
           },
         },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      this.prisma.workflowInstance.count({ where: { status: 'ACTIVE' } }),
-    ]);
+        definition: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    });
 
     const pending = instances.filter((inst) => {
       const config = inst.definition.config as unknown as WorkflowConfig;
@@ -312,7 +336,7 @@ export class WorkflowActionService {
     });
 
     return {
-      items: pending.map((inst) => ({
+      items: instances.map((inst) => ({
         instanceId: inst.id,
         submissionId: inst.submissionId,
         currentStep: inst.currentStep,
