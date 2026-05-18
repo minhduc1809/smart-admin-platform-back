@@ -18,4 +18,5 @@ export interface WorkflowConfig {
   initialState: string;
   finalStates: string[];
   transitions: WorkflowTransition[];
+  statusMapping?: Record<string, SubmissionStatus>;
 }
