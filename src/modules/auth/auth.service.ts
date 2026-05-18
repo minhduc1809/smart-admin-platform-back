@@ -206,11 +206,15 @@ export class AuthService {
       refresh_token: refreshToken,
     });
 
-    await fetch(this.logoutEndpoint, {
+    const res = await fetch(this.logoutEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
     });
+
+    if (!res.ok) {
+      return { success: false };
+    }
 
     return { success: true };
   }
