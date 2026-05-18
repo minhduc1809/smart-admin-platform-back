@@ -11,6 +11,7 @@ import {
 import { SubmissionService } from './submission.service';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { SubmissionFilterDto } from './dto/submission-filter.dto';
+import { ResubmitDto } from './dto/resubmit.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -73,9 +74,9 @@ export class SubmissionController {
   resubmit(
     @Param('id') id: string,
     @CurrentUser('id') userId: string,
-    @Body() body: { data?: Record<string, any> },
+    @Body() dto: ResubmitDto,
   ) {
-    return this.submissionService.resubmit(userId, id, body.data);
+    return this.submissionService.resubmit(userId, id, dto.data);
   }
 
   @Get(':id/revisions')

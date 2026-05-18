@@ -103,7 +103,7 @@ export class WorkflowEngine {
     });
 
     // Sync submission status
-    const submissionStatus = this.mapToSubmissionStatus(config, newState);
+    const submissionStatus = this.mapToSubmissionStatus(config, newState, transition);
     await tx.submission.update({
       where: { id: instance.submissionId },
       data: { status: submissionStatus },
@@ -135,10 +135,11 @@ export class WorkflowEngine {
   }
 
   validatePermission(transition: WorkflowTransition, actorRole: string): void {
-    if (transition.roles && transition.roles.length > 0) {
-      if (!transition.roles.includes(actorRole)) {
-        throw new ForbiddenException('workflow.NOT_ALLOWED');
-      }
+    if (!transition.roles || transition.roles.length === 0) {
+      throw new ForbiddenException('workflow.NOT_ALLOWED');
+    }
+    if (!transition.roles.includes(actorRole)) {
+      throw new ForbiddenException('workflow.NOT_ALLOWED');
     }
   }
 
@@ -149,16 +150,31 @@ export class WorkflowEngine {
   private mapToSubmissionStatus(
     config: WorkflowConfig,
     state: string,
+    transition?: WorkflowTransition,
   ): SubmissionStatus {
+    if (transition?.submissionStatus) {
+      return transition.submissionStatus;
+    }
+
+    if (config.statusMapping && config.statusMapping[state]) {
+      return config.statusMapping[state];
+    }
+
     const lower = state.toLowerCase();
-    if (lower.includes('cancel')) return SubmissionStatus.CANCELLED;
-    if (lower.includes('return')) return SubmissionStatus.RETURNED;
+
     if (config.finalStates.includes(state)) {
       if (lower.includes('reject')) {
         return SubmissionStatus.REJECTED;
       }
+      if (lower.includes('cancel')) {
+        return SubmissionStatus.CANCELLED;
+      }
       return SubmissionStatus.APPROVED;
     }
+
+    if (lower === 'cancel' || lower === 'cancelled') return SubmissionStatus.CANCELLED;
+    if (lower === 'return' || lower === 'returned') return SubmissionStatus.RETURNED;
+
     return SubmissionStatus.UNDER_REVIEW;
   }
 }

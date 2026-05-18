@@ -3,6 +3,8 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { passportJwtSecret } from 'jwks-rsa';
 
+import { Role } from '@prisma/client';
+
 @Injectable()
 export class KeycloakStrategy extends PassportStrategy(Strategy, 'keycloak') {
   constructor() {
@@ -27,8 +29,9 @@ export class KeycloakStrategy extends PassportStrategy(Strategy, 'keycloak') {
   async validate(payload: any) {
     const realmRoles: string[] = payload.realm_access?.roles || [];
     const role =
-      ['ADMIN', 'MANAGER', 'USER'].find((r) => realmRoles.includes(r)) ||
-      'USER';
+      [Role.ADMIN, Role.MANAGER, Role.USER].find((r) =>
+        realmRoles.includes(r),
+      ) || Role.USER;
 
     return {
       keycloakId: payload.sub,

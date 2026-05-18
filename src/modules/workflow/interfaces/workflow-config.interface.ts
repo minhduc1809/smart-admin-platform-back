@@ -1,3 +1,5 @@
+import { SubmissionStatus } from '@prisma/client';
+
 export interface WorkflowTransitionCondition {
   requireComment?: boolean;
 }
@@ -8,6 +10,7 @@ export interface WorkflowTransition {
   action: string;
   roles?: string[];
   conditions?: WorkflowTransitionCondition;
+  submissionStatus?: SubmissionStatus;
 }
 
 export interface WorkflowConfig {
@@ -15,4 +18,5 @@ export interface WorkflowConfig {
   initialState: string;
   finalStates: string[];
   transitions: WorkflowTransition[];
+  statusMapping?: Record<string, SubmissionStatus>;
 }

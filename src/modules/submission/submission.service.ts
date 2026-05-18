@@ -11,7 +11,7 @@ import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { SubmissionFilterDto } from './dto/submission-filter.dto';
 import { WorkflowEngine } from '../workflow/workflow.engine';
 import { FilterUtil } from '../../common/utils/filter.util';
-import { SubmissionStatus } from '@prisma/client';
+import { SubmissionStatus, Role } from '@prisma/client';
 
 @Injectable()
 export class SubmissionService {
@@ -72,15 +72,14 @@ export class SubmissionService {
   }
 
   async findMySubmissions(userId: string, dto: SubmissionFilterDto) {
-    const page = dto.page ?? 1;
-    const limit = dto.limit ?? 20;
+    const page = Math.max(1, dto.page ?? 1);
+    const limit = Math.max(1, dto.limit ?? 20);
 
-    const where = FilterUtil.buildPrismaWhere({
+    const where = this.buildWhere({
       submittedBy: userId,
       status: dto.status,
       formId: dto.formId,
     });
-    delete where.deletedAt;
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.submission.findMany({
@@ -100,14 +99,13 @@ export class SubmissionService {
   }
 
   async findAll(dto: SubmissionFilterDto) {
-    const page = dto.page ?? 1;
-    const limit = dto.limit ?? 20;
+    const page = Math.max(1, dto.page ?? 1);
+    const limit = Math.max(1, dto.limit ?? 20);
 
-    const where = FilterUtil.buildPrismaWhere({
+    const where = this.buildWhere({
       status: dto.status,
       formId: dto.formId,
     });
-    delete where.deletedAt;
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.submission.findMany({
@@ -129,6 +127,22 @@ export class SubmissionService {
     };
   }
 
+  private buildWhere(filters: any) {
+    const where = FilterUtil.buildPrismaWhere(filters);
+    // FilterUtil.buildPrismaWhere might include deletedAt: null by default 
+    // depending on its implementation, but we want to be explicit here if needed.
+    // The previous code was:
+    // const where = FilterUtil.buildPrismaWhere(filters);
+    // delete where.deletedAt;
+    // This suggests FilterUtil.buildPrismaWhere adds it.
+    
+    // To be safe and less fragile as requested in #10:
+    if (where.hasOwnProperty('deletedAt')) {
+      delete where.deletedAt;
+    }
+    return where;
+  }
+
   async findOne(id: string, userId: string, role: string) {
     const submission = await this.prisma.submission.findUnique({
       where: { id },
@@ -146,8 +160,8 @@ export class SubmissionService {
     }
 
     if (
-      role !== 'ADMIN' &&
-      role !== 'MANAGER' &&
+      role !== Role.ADMIN &&
+      role !== Role.MANAGER &&
       submission.submittedBy !== userId
     ) {
       throw new ForbiddenException('error.FORBIDDEN');
@@ -273,54 +287,60 @@ export class SubmissionService {
   }
 
   async getRevisions(id: string, userId: string, role: string) {
-    // Walk up to find root
-    let currentId: string | null = id;
-    let rootId = id;
-    while (currentId) {
-      const sub = await this.prisma.submission.findUnique({
-        where: { id: currentId },
+    // Walk up to find root (with cycle detection)
+    const ancestors = await this.prisma.submission.findMany({
+      where: { id },
+      select: { id: true, parentSubmissionId: true, submittedBy: true },
+    });
+
+    let current = ancestors[0];
+    if (!current) throw new NotFoundException('submission.NOT_FOUND');
+
+    const visited = new Set<string>([current.id]);
+    while (current?.parentSubmissionId) {
+      if (visited.has(current.parentSubmissionId)) break;
+      visited.add(current.parentSubmissionId);
+      const parent = await this.prisma.submission.findUnique({
+        where: { id: current.parentSubmissionId },
         select: { id: true, parentSubmissionId: true, submittedBy: true },
       });
-      if (!sub) break;
-
-      if (role !== 'ADMIN' && role !== 'MANAGER' && sub.submittedBy !== userId) {
-        throw new ForbiddenException('error.FORBIDDEN');
-      }
-
-      rootId = sub.id;
-      currentId = sub.parentSubmissionId;
+      if (!parent) break;
+      current = parent;
     }
 
-    // Collect all revisions iteratively from root
-    const revisions: any[] = [];
-    const queue = [rootId];
+    const rootId = current.id;
 
-    while (queue.length > 0) {
-      const parentId = queue.shift()!;
-      const sub = await this.prisma.submission.findUnique({
-        where: { id: parentId },
-        include: {
-          workflows: {
-            select: { currentStep: true, status: true },
-            orderBy: { createdAt: 'desc' },
-            take: 1,
-          },
-        },
+    // Collect all descendant IDs in batches instead of one-by-one
+    const allIds: string[] = [rootId];
+    let frontier = [rootId];
+    while (frontier.length > 0) {
+      const children = await this.prisma.submission.findMany({
+        where: { parentSubmissionId: { in: frontier } },
+        select: { id: true },
       });
-      if (sub) {
-        revisions.push(sub);
-        const children = await this.prisma.submission.findMany({
-          where: { parentSubmissionId: parentId },
-          select: { id: true },
-          orderBy: { revisionNumber: 'asc' },
-        });
-        for (const child of children) {
-          queue.push(child.id);
-        }
-      }
+      frontier = children.map((c) => c.id);
+      allIds.push(...frontier);
     }
 
-    revisions.sort((a, b) => a.revisionNumber - b.revisionNumber);
+    // Fetch all revisions with workflow data in one query
+    const revisions = await this.prisma.submission.findMany({
+      where: { id: { in: allIds } },
+      include: {
+        workflows: {
+          select: { currentStep: true, status: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+      orderBy: { revisionNumber: 'asc' },
+    });
+
+    // Authorization check
+    if (role !== Role.ADMIN && role !== Role.MANAGER) {
+      const unauthorized = revisions.some((s) => s.submittedBy !== userId);
+      if (unauthorized) throw new ForbiddenException('error.FORBIDDEN');
+    }
+
     return revisions;
   }
 }

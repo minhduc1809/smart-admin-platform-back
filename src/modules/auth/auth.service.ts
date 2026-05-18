@@ -8,11 +8,13 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import type { StringValue } from 'ms';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 
 interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  jti?: string;
 }
 
 @Injectable()
@@ -26,11 +28,26 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
   ) {
-    this.keycloakUrl = process.env.KEYCLOAK_URL || 'http://localhost:8080';
-    this.realm = process.env.KEYCLOAK_REALM || 'smart-admin';
-    this.clientId = process.env.KEYCLOAK_CLIENT_ID || 'smart-admin-backend';
-    this.clientSecret =
-      process.env.KEYCLOAK_CLIENT_SECRET || 'smart-admin-backend-secret';
+    const isProd = process.env.NODE_ENV === 'production';
+
+    const getEnv = (key: string, defaultValue?: string): string => {
+      const value = process.env[key];
+      if (!value) {
+        if (isProd) {
+          throw new Error(`Environment variable ${key} is required in production`);
+        }
+        return defaultValue || '';
+      }
+      return value;
+    };
+
+    this.keycloakUrl = getEnv('KEYCLOAK_URL', 'http://localhost:8080');
+    this.realm = getEnv('KEYCLOAK_REALM', 'smart-admin');
+    this.clientId = getEnv('KEYCLOAK_CLIENT_ID', 'smart-admin-backend');
+    this.clientSecret = getEnv(
+      'KEYCLOAK_CLIENT_SECRET',
+      'smart-admin-backend-secret',
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -58,13 +75,18 @@ export class AuthService {
       expiresIn: (process.env.JWT_ACCESS_EXPIRATION ?? '15m') as StringValue,
     });
 
-    const refreshToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_REFRESH_SECRET,
-      expiresIn: (process.env.JWT_REFRESH_EXPIRATION ?? '7d') as StringValue,
-    });
+    const jti = randomUUID();
+    const refreshToken = this.jwtService.sign(
+      { ...payload, jti },
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: (process.env.JWT_REFRESH_EXPIRATION ?? '7d') as StringValue,
+      },
+    );
 
     await this.prisma.refreshToken.create({
       data: {
+        id: jti,
         token: await bcrypt.hash(refreshToken, 10),
         userId: user.id,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -77,9 +99,12 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto) {
+    const email = dto.email.toLowerCase();
+    const username = dto.username.toLowerCase();
+
     const existing = await this.prisma.user.findFirst({
       where: {
-        OR: [{ email: dto.email }, { username: dto.username }],
+        OR: [{ email }, { username }],
       },
     });
 
@@ -90,8 +115,8 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email,
-        username: dto.username,
+        email,
+        username,
         passwordHash: hashedPassword,
         firstName: dto.firstName,
         lastName: dto.lastName,
@@ -109,18 +134,33 @@ export class AuthService {
       const payload = this.jwtService.verify<JwtPayload>(token, {
         secret: process.env.JWT_REFRESH_SECRET,
       });
-      const tokens = await this.prisma.refreshToken.findMany({
-        where: { userId: payload.sub },
-      });
+      let validRecord: any = null;
 
-      let validRecord: (typeof tokens)[number] | null = null;
-      for (const t of tokens) {
+      if (payload.jti) {
+        // O(1) lookup by jti — single DB hit + single bcrypt compare
+        const t = await this.prisma.refreshToken.findUnique({
+          where: { id: payload.jti },
+        });
         if (
+          t &&
           (await bcrypt.compare(token, t.token)) &&
           t.expiresAt > new Date()
         ) {
           validRecord = t;
-          break;
+        }
+      } else {
+        // Fallback for legacy tokens without jti
+        const tokens = await this.prisma.refreshToken.findMany({
+          where: { userId: payload.sub },
+        });
+        for (const t of tokens) {
+          if (
+            (await bcrypt.compare(token, t.token)) &&
+            t.expiresAt > new Date()
+          ) {
+            validRecord = t;
+            break;
+          }
         }
       }
 
@@ -147,6 +187,23 @@ export class AuthService {
   }
 
   async logout(token: string, userId: string) {
+    // Fast path: decode jti for O(1) lookup
+    try {
+      const payload = this.jwtService.decode(token) as JwtPayload;
+      if (payload?.jti) {
+        const t = await this.prisma.refreshToken.findUnique({
+          where: { id: payload.jti },
+        });
+        if (t && (await bcrypt.compare(token, t.token))) {
+          await this.prisma.refreshToken.delete({ where: { id: t.id } });
+        }
+        return { success: true };
+      }
+    } catch {
+      // Decode failed — fall through to legacy path
+    }
+
+    // Legacy fallback for tokens without jti
     const tokens = await this.prisma.refreshToken.findMany({
       where: { userId },
     });
@@ -206,11 +263,15 @@ export class AuthService {
       refresh_token: refreshToken,
     });
 
-    await fetch(this.logoutEndpoint, {
+    const res = await fetch(this.logoutEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
     });
+
+    if (!res.ok) {
+      return { success: false };
+    }
 
     return { success: true };
   }

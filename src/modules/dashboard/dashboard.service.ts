@@ -36,8 +36,9 @@ export class DashboardService {
   }
 
   async getSubmissionsByDay(days: number = 30) {
+    const clampedDays = Math.min(Math.max(days, 1), 365);
     const from = new Date();
-    from.setDate(from.getDate() - days);
+    from.setDate(from.getDate() - clampedDays);
 
     const rows = await this.prisma.$queryRaw<Array<{ date: Date; count: number }>>`
       SELECT DATE(created_at) AS date, COUNT(*)::int AS count
@@ -54,11 +55,12 @@ export class DashboardService {
   }
 
   async getTopForms(limit: number = 5) {
+    const clampedLimit = Math.min(Math.max(limit, 1), 100);
     const groups = await this.prisma.submission.groupBy({
       by: ['formId'],
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
-      take: limit,
+      take: clampedLimit,
     });
 
     const formIds = groups.map((group) => group.formId);
