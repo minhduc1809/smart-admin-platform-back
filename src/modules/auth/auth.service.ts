@@ -56,7 +56,7 @@ export class AuthService {
 
   async login(email: string, pass: string) {
     const user = await this.prisma.user.findFirst({
-      where: { email, deletedAt: null },
+      where: { email: email.toLowerCase(), deletedAt: null },
     });
     if (!user || !user.isActive || !user.passwordHash)
       throw new UnauthorizedException('error.INVALID_CREDENTIALS');

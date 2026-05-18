@@ -127,8 +127,8 @@ export class UserService {
   }
 
   async findPage(dto: UserPageDto) {
-    const page = dto.page ?? 1;
-    const limit = dto.limit ?? 10;
+    const page = Math.max(1, dto.page ?? 1);
+    const limit = Math.max(1, dto.limit ?? 10);
 
     const condition = dto.condition && typeof dto.condition === 'object' ? dto.condition : {};
     const filters = Array.isArray(dto.filters) ? dto.filters : [];

@@ -129,14 +129,6 @@ export class SubmissionService {
 
   private buildWhere(filters: any) {
     const where = FilterUtil.buildPrismaWhere(filters);
-    // FilterUtil.buildPrismaWhere might include deletedAt: null by default 
-    // depending on its implementation, but we want to be explicit here if needed.
-    // The previous code was:
-    // const where = FilterUtil.buildPrismaWhere(filters);
-    // delete where.deletedAt;
-    // This suggests FilterUtil.buildPrismaWhere adds it.
-    
-    // To be safe and less fragile as requested in #10:
     if (where.hasOwnProperty('deletedAt')) {
       delete where.deletedAt;
     }
