@@ -10,7 +10,7 @@ export interface WorkflowTransition {
   action: string;
   roles?: string[];
   conditions?: WorkflowTransitionCondition;
-  submissionStatus?: SubmissionStatus; // explicit mapping instead of substring matching
+  submissionStatus?: SubmissionStatus;
 }
 
 export interface WorkflowConfig {
