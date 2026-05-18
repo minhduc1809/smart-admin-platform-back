@@ -169,33 +169,38 @@ export class WorkflowActionService {
   }
 
   private async getRevisionChainHistory(submissionId: string) {
-    // Walk up to root
-    let currentId: string | null = submissionId;
-    let rootId = submissionId;
-    while (currentId) {
-      const sub = await this.prisma.submission.findUnique({
-        where: { id: currentId },
+    // Walk up to root (with cycle detection)
+    let current = await this.prisma.submission.findUnique({
+      where: { id: submissionId },
+      select: { id: true, parentSubmissionId: true },
+    });
+
+    const visited = new Set<string>();
+    while (current) {
+      if (visited.has(current.id)) break;
+      visited.add(current.id);
+      if (!current.parentSubmissionId) break;
+      const parent = await this.prisma.submission.findUnique({
+        where: { id: current.parentSubmissionId },
         select: { id: true, parentSubmissionId: true },
       });
-      if (!sub) break;
-      rootId = sub.id;
-      currentId = sub.parentSubmissionId;
+      if (!parent) break;
+      current = parent;
     }
 
-    // Collect all submission IDs in the chain
-    const chain: string[] = [];
-    const queue = [rootId];
-    while (queue.length > 0) {
-      const id = queue.shift()!;
-      chain.push(id);
+    const rootId = current?.id ?? submissionId;
+
+    // Collect all descendant IDs in batches
+    const chain: string[] = [rootId];
+    let frontier = [rootId];
+    while (frontier.length > 0) {
       const children = await this.prisma.submission.findMany({
-        where: { parentSubmissionId: id },
+        where: { parentSubmissionId: { in: frontier } },
         select: { id: true },
         orderBy: { revisionNumber: 'asc' },
       });
-      for (const child of children) {
-        queue.push(child.id);
-      }
+      frontier = children.map((c) => c.id);
+      chain.push(...frontier);
     }
 
     const instances = await this.prisma.workflowInstance.findMany({
