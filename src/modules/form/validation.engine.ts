@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import safe from 'safe-regex2';
 
 export interface SchemaField {
   key: string;
@@ -70,8 +71,18 @@ export class ValidationEngine {
             params: { max: rules.maxLength },
           });
         }
-        if (rules.regex && !new RegExp(rules.regex).test(String(value))) {
-          errors.push({ field: fieldDef.key, i18nKey: 'validation.pattern' });
+        if (rules.regex) {
+          if (!safe(rules.regex)) {
+            errors.push({ field: fieldDef.key, i18nKey: 'validation.unsafe_pattern' });
+          } else {
+            try {
+              if (!new RegExp(rules.regex).test(String(value))) {
+                errors.push({ field: fieldDef.key, i18nKey: 'validation.pattern' });
+              }
+            } catch {
+              errors.push({ field: fieldDef.key, i18nKey: 'validation.invalid_pattern' });
+            }
+          }
         }
       }
 
