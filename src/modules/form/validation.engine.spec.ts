@@ -157,6 +157,48 @@ describe('ValidationEngine', () => {
     );
   });
 
+  it('should reject unsafe regex patterns (ReDoS)', () => {
+    const regexSchema: FormSchema = {
+      fields: [
+        { key: 'input', label: 'Input', type: 'text', rules: { regex: '(a+)+$' } },
+      ],
+    };
+    const result = engine.validate(regexSchema, { input: 'aaaaaa' });
+    expect(result).toContainEqual(
+      expect.objectContaining({ field: 'input', i18nKey: 'validation.unsafe_pattern' }),
+    );
+  });
+
+  it('should validate safe regex patterns normally', () => {
+    const regexSchema: FormSchema = {
+      fields: [
+        { key: 'code', label: 'Code', type: 'text', rules: { regex: '^[A-Z]{3}-\\d{4}$' } },
+      ],
+    };
+    const pass = engine.validate(regexSchema, { code: 'ABC-1234' });
+    expect(pass).toHaveLength(0);
+
+    const fail = engine.validate(regexSchema, { code: 'invalid' });
+    expect(fail).toContainEqual(
+      expect.objectContaining({ field: 'code', i18nKey: 'validation.pattern' }),
+    );
+  });
+
+  it('should handle invalid regex syntax gracefully', () => {
+    const regexSchema: FormSchema = {
+      fields: [
+        { key: 'input', label: 'Input', type: 'text', rules: { regex: '[invalid' } },
+      ],
+    };
+    const result = engine.validate(regexSchema, { input: 'test' });
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        field: 'input',
+        i18nKey: expect.stringMatching(/validation\.(unsafe_pattern|invalid_pattern)/),
+      }),
+    );
+  });
+
   it('should return error if file size exceeds max', () => {
     const data = {
       fullName: 'John Doe',

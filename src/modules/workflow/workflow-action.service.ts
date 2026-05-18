@@ -27,18 +27,18 @@ export class WorkflowActionService {
       return this.handleResubmit(actorId, actorRole, dto);
     }
 
-    const instance = await this.prisma.workflowInstance.findFirst({
-      where: {
-        submissionId: dto.submissionId,
-        status: 'ACTIVE',
-      },
-    });
-
-    if (!instance) {
-      throw new NotFoundException('workflow.INSTANCE_NOT_FOUND');
-    }
-
     const result = await this.prisma.$transaction(async (tx) => {
+      const instance = await tx.workflowInstance.findFirst({
+        where: {
+          submissionId: dto.submissionId,
+          status: 'ACTIVE',
+        },
+      });
+
+      if (!instance) {
+        throw new NotFoundException('workflow.INSTANCE_NOT_FOUND');
+      }
+
       return await this.workflowEngine.executeAction(
         tx,
         instance.id,
@@ -169,33 +169,38 @@ export class WorkflowActionService {
   }
 
   private async getRevisionChainHistory(submissionId: string) {
-    // Walk up to root
-    let currentId: string | null = submissionId;
-    let rootId = submissionId;
-    while (currentId) {
-      const sub = await this.prisma.submission.findUnique({
-        where: { id: currentId },
+    // Walk up to root (with cycle detection)
+    let current = await this.prisma.submission.findUnique({
+      where: { id: submissionId },
+      select: { id: true, parentSubmissionId: true },
+    });
+
+    const visited = new Set<string>();
+    while (current) {
+      if (visited.has(current.id)) break;
+      visited.add(current.id);
+      if (!current.parentSubmissionId) break;
+      const parent = await this.prisma.submission.findUnique({
+        where: { id: current.parentSubmissionId },
         select: { id: true, parentSubmissionId: true },
       });
-      if (!sub) break;
-      rootId = sub.id;
-      currentId = sub.parentSubmissionId;
+      if (!parent) break;
+      current = parent;
     }
 
-    // Collect all submission IDs in the chain
-    const chain: string[] = [];
-    const queue = [rootId];
-    while (queue.length > 0) {
-      const id = queue.shift()!;
-      chain.push(id);
+    const rootId = current?.id ?? submissionId;
+
+    // Collect all descendant IDs in batches
+    const chain: string[] = [rootId];
+    let frontier = [rootId];
+    while (frontier.length > 0) {
       const children = await this.prisma.submission.findMany({
-        where: { parentSubmissionId: id },
+        where: { parentSubmissionId: { in: frontier } },
         select: { id: true },
         orderBy: { revisionNumber: 'asc' },
       });
-      for (const child of children) {
-        queue.push(child.id);
-      }
+      frontier = children.map((c) => c.id);
+      chain.push(...frontier);
     }
 
     const instances = await this.prisma.workflowInstance.findMany({
@@ -256,7 +261,7 @@ export class WorkflowActionService {
           ? t.from.includes(currentState)
           : t.from === currentState || t.from === '*';
         const roleMatch =
-          !t.roles || t.roles.length === 0 || t.roles.includes(userRole);
+          t.roles && t.roles.length > 0 && t.roles.includes(userRole);
         return fromMatch && roleMatch;
       })
       .map((t) => ({
@@ -278,27 +283,50 @@ export class WorkflowActionService {
   ) {
     const skip = (page - 1) * limit;
 
-    // Lấy tất cả workflow instances đang ACTIVE
-    const [instances, total] = await this.prisma.$transaction([
-      this.prisma.workflowInstance.findMany({
-        where: { status: 'ACTIVE' },
-        include: {
-          definition: true,
-          submission: {
-            include: {
-              form: { select: { name: true } },
-              user: { select: { email: true, username: true } },
-            },
+    // Pass 1: fetch all active instance IDs with their config (lightweight)
+    const allActive = await this.prisma.workflowInstance.findMany({
+      where: { status: 'ACTIVE' },
+      select: {
+        id: true,
+        currentStep: true,
+        definition: { select: { config: true } },
+      },
+    });
+
+    // Filter by role in memory to get the matching IDs
+    const matchingIds = allActive
+      .filter((inst) => {
+        const config = inst.definition.config as unknown as WorkflowConfig;
+        return config.transitions.some((t) => {
+          const fromMatch = Array.isArray(t.from)
+            ? t.from.includes(inst.currentStep)
+            : t.from === inst.currentStep || t.from === '*';
+          const roleMatch =
+            !t.roles || t.roles.length === 0 || t.roles.includes(userRole);
+          return fromMatch && roleMatch;
+        });
+      })
+      .map((inst) => inst.id);
+
+    const total = matchingIds.length;
+
+    // Pass 2: paginate over the filtered IDs with full includes
+    const instances = await this.prisma.workflowInstance.findMany({
+      where: { id: { in: matchingIds } },
+      include: {
+        submission: {
+          include: {
+            form: { select: { name: true } },
+            user: { select: { email: true, username: true } },
           },
         },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      this.prisma.workflowInstance.count({ where: { status: 'ACTIVE' } }),
-    ]);
+        definition: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    });
 
-    // Lọc ra những instance mà userRole có quyền thực hiện hành động tiếp theo
     const pending = instances.filter((inst) => {
       const config = inst.definition.config as unknown as WorkflowConfig;
       const currentState = inst.currentStep;
@@ -307,13 +335,13 @@ export class WorkflowActionService {
           ? t.from.includes(currentState)
           : t.from === currentState || t.from === '*';
         const roleMatch =
-          !t.roles || t.roles.length === 0 || t.roles.includes(userRole);
+          t.roles && t.roles.length > 0 && t.roles.includes(userRole);
         return fromMatch && roleMatch;
       });
     });
 
     return {
-      items: pending.map((inst) => ({
+      items: instances.map((inst) => ({
         instanceId: inst.id,
         submissionId: inst.submissionId,
         currentStep: inst.currentStep,
