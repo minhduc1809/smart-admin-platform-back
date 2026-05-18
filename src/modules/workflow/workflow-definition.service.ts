@@ -100,6 +100,11 @@ export class WorkflowDefinitionService {
       );
     }
 
+    const stateSet = new Set(config.states);
+    if (stateSet.size !== config.states.length) {
+      throw new BadRequestException('Workflow states must be unique');
+    }
+
     if (!config.initialState || !config.states.includes(config.initialState)) {
       throw new BadRequestException(
         'initialState must be one of the defined states',
