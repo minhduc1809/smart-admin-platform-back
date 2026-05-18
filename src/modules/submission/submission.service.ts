@@ -273,54 +273,60 @@ export class SubmissionService {
   }
 
   async getRevisions(id: string, userId: string, role: string) {
-    // Walk up to find root
-    let currentId: string | null = id;
-    let rootId = id;
-    while (currentId) {
-      const sub = await this.prisma.submission.findUnique({
-        where: { id: currentId },
+    // Walk up to find root (with cycle detection)
+    const ancestors = await this.prisma.submission.findMany({
+      where: { id },
+      select: { id: true, parentSubmissionId: true, submittedBy: true },
+    });
+
+    let current = ancestors[0];
+    if (!current) throw new NotFoundException('submission.NOT_FOUND');
+
+    const visited = new Set<string>([current.id]);
+    while (current?.parentSubmissionId) {
+      if (visited.has(current.parentSubmissionId)) break;
+      visited.add(current.parentSubmissionId);
+      const parent = await this.prisma.submission.findUnique({
+        where: { id: current.parentSubmissionId },
         select: { id: true, parentSubmissionId: true, submittedBy: true },
       });
-      if (!sub) break;
-
-      if (role !== 'ADMIN' && role !== 'MANAGER' && sub.submittedBy !== userId) {
-        throw new ForbiddenException('error.FORBIDDEN');
-      }
-
-      rootId = sub.id;
-      currentId = sub.parentSubmissionId;
+      if (!parent) break;
+      current = parent;
     }
 
-    // Collect all revisions iteratively from root
-    const revisions: any[] = [];
-    const queue = [rootId];
+    const rootId = current.id;
 
-    while (queue.length > 0) {
-      const parentId = queue.shift()!;
-      const sub = await this.prisma.submission.findUnique({
-        where: { id: parentId },
-        include: {
-          workflows: {
-            select: { currentStep: true, status: true },
-            orderBy: { createdAt: 'desc' },
-            take: 1,
-          },
-        },
+    // Collect all descendant IDs in batches instead of one-by-one
+    const allIds: string[] = [rootId];
+    let frontier = [rootId];
+    while (frontier.length > 0) {
+      const children = await this.prisma.submission.findMany({
+        where: { parentSubmissionId: { in: frontier } },
+        select: { id: true },
       });
-      if (sub) {
-        revisions.push(sub);
-        const children = await this.prisma.submission.findMany({
-          where: { parentSubmissionId: parentId },
-          select: { id: true },
-          orderBy: { revisionNumber: 'asc' },
-        });
-        for (const child of children) {
-          queue.push(child.id);
-        }
-      }
+      frontier = children.map((c) => c.id);
+      allIds.push(...frontier);
     }
 
-    revisions.sort((a, b) => a.revisionNumber - b.revisionNumber);
+    // Fetch all revisions with workflow data in one query
+    const revisions = await this.prisma.submission.findMany({
+      where: { id: { in: allIds } },
+      include: {
+        workflows: {
+          select: { currentStep: true, status: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+      orderBy: { revisionNumber: 'asc' },
+    });
+
+    // Authorization check
+    if (role !== 'ADMIN' && role !== 'MANAGER') {
+      const unauthorized = revisions.some((s) => s.submittedBy !== userId);
+      if (unauthorized) throw new ForbiddenException('error.FORBIDDEN');
+    }
+
     return revisions;
   }
 }
