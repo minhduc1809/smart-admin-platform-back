@@ -103,7 +103,7 @@ export class WorkflowEngine {
     });
 
     // Sync submission status
-    const submissionStatus = this.mapToSubmissionStatus(config, newState);
+    const submissionStatus = this.mapToSubmissionStatus(config, newState, transition);
     await tx.submission.update({
       where: { id: instance.submissionId },
       data: { status: submissionStatus },
@@ -149,7 +149,12 @@ export class WorkflowEngine {
   private mapToSubmissionStatus(
     config: WorkflowConfig,
     state: string,
+    transition?: WorkflowTransition,
   ): SubmissionStatus {
+    if (transition?.submissionStatus) {
+      return transition.submissionStatus;
+    }
+
     const lower = state.toLowerCase();
     if (lower.includes('cancel')) return SubmissionStatus.CANCELLED;
     if (lower.includes('return')) return SubmissionStatus.RETURNED;
