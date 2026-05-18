@@ -49,7 +49,7 @@ export class WorkflowActionService {
       );
     });
 
-    this.eventEmitter.emit('workflow.state.changed', {
+    await this.eventEmitter.emitAsync('workflow.state.changed', {
       submissionId: result.submissionId,
       instanceId: result.instanceId,
       fromState: result.previousState,
@@ -59,7 +59,7 @@ export class WorkflowActionService {
     });
 
     if (result.isCompleted) {
-      this.eventEmitter.emit('workflow.completed', {
+      await this.eventEmitter.emitAsync('workflow.completed', {
         submissionId: result.submissionId,
         instanceId: result.instanceId,
         finalState: result.currentState,
