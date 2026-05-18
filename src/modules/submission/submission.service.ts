@@ -273,10 +273,13 @@ export class SubmissionService {
   }
 
   async getRevisions(id: string, userId: string, role: string) {
-    // Walk up to find root
+    // Walk up to find root with cycle detection
     let currentId: string | null = id;
     let rootId = id;
-    while (currentId) {
+    const visited = new Set<string>();
+
+    while (currentId && !visited.has(currentId)) {
+      visited.add(currentId);
       const sub = await this.prisma.submission.findUnique({
         where: { id: currentId },
         select: { id: true, parentSubmissionId: true, submittedBy: true },
