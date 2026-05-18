@@ -8,11 +8,13 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import type { StringValue } from 'ms';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 
 interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  jti?: string;
 }
 
 @Injectable()
@@ -58,13 +60,18 @@ export class AuthService {
       expiresIn: (process.env.JWT_ACCESS_EXPIRATION ?? '15m') as StringValue,
     });
 
-    const refreshToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_REFRESH_SECRET,
-      expiresIn: (process.env.JWT_REFRESH_EXPIRATION ?? '7d') as StringValue,
-    });
+    const jti = randomUUID();
+    const refreshToken = this.jwtService.sign(
+      { ...payload, jti },
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: (process.env.JWT_REFRESH_EXPIRATION ?? '7d') as StringValue,
+      },
+    );
 
     await this.prisma.refreshToken.create({
       data: {
+        id: jti,
         token: await bcrypt.hash(refreshToken, 10),
         userId: user.id,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -109,18 +116,33 @@ export class AuthService {
       const payload = this.jwtService.verify<JwtPayload>(token, {
         secret: process.env.JWT_REFRESH_SECRET,
       });
-      const tokens = await this.prisma.refreshToken.findMany({
-        where: { userId: payload.sub },
-      });
+      let validRecord: any = null;
 
-      let validRecord: (typeof tokens)[number] | null = null;
-      for (const t of tokens) {
+      if (payload.jti) {
+        // O(1) lookup by jti — single DB hit + single bcrypt compare
+        const t = await this.prisma.refreshToken.findUnique({
+          where: { id: payload.jti },
+        });
         if (
+          t &&
           (await bcrypt.compare(token, t.token)) &&
           t.expiresAt > new Date()
         ) {
           validRecord = t;
-          break;
+        }
+      } else {
+        // Fallback for legacy tokens without jti
+        const tokens = await this.prisma.refreshToken.findMany({
+          where: { userId: payload.sub },
+        });
+        for (const t of tokens) {
+          if (
+            (await bcrypt.compare(token, t.token)) &&
+            t.expiresAt > new Date()
+          ) {
+            validRecord = t;
+            break;
+          }
         }
       }
 
@@ -147,6 +169,23 @@ export class AuthService {
   }
 
   async logout(token: string, userId: string) {
+    // Fast path: decode jti for O(1) lookup
+    try {
+      const payload = this.jwtService.decode(token) as JwtPayload;
+      if (payload?.jti) {
+        const t = await this.prisma.refreshToken.findUnique({
+          where: { id: payload.jti },
+        });
+        if (t && (await bcrypt.compare(token, t.token))) {
+          await this.prisma.refreshToken.delete({ where: { id: t.id } });
+        }
+        return { success: true };
+      }
+    } catch {
+      // Decode failed — fall through to legacy path
+    }
+
+    // Legacy fallback for tokens without jti
     const tokens = await this.prisma.refreshToken.findMany({
       where: { userId },
     });
