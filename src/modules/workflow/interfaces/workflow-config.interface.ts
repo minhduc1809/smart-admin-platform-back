@@ -1,3 +1,5 @@
+import { SubmissionStatus } from '@prisma/client';
+
 export interface WorkflowTransitionCondition {
   requireComment?: boolean;
 }
@@ -8,6 +10,7 @@ export interface WorkflowTransition {
   action: string;
   roles?: string[];
   conditions?: WorkflowTransitionCondition;
+  submissionStatus?: SubmissionStatus; // explicit mapping instead of substring matching
 }
 
 export interface WorkflowConfig {
