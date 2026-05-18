@@ -256,7 +256,7 @@ export class WorkflowActionService {
           ? t.from.includes(currentState)
           : t.from === currentState || t.from === '*';
         const roleMatch =
-          !t.roles || t.roles.length === 0 || t.roles.includes(userRole);
+          t.roles && t.roles.length > 0 && t.roles.includes(userRole);
         return fromMatch && roleMatch;
       })
       .map((t) => ({
@@ -298,7 +298,6 @@ export class WorkflowActionService {
       this.prisma.workflowInstance.count({ where: { status: 'ACTIVE' } }),
     ]);
 
-    // Lọc ra những instance mà userRole có quyền thực hiện hành động tiếp theo
     const pending = instances.filter((inst) => {
       const config = inst.definition.config as unknown as WorkflowConfig;
       const currentState = inst.currentStep;
@@ -307,7 +306,7 @@ export class WorkflowActionService {
           ? t.from.includes(currentState)
           : t.from === currentState || t.from === '*';
         const roleMatch =
-          !t.roles || t.roles.length === 0 || t.roles.includes(userRole);
+          t.roles && t.roles.length > 0 && t.roles.includes(userRole);
         return fromMatch && roleMatch;
       });
     });

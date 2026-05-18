@@ -83,12 +83,14 @@ export class WorkflowController {
   // --- Workflow Action Execution ---
 
   @Post('action')
+  @Roles(Role.ADMIN, Role.MANAGER, Role.USER)
   @ApiOperation({ summary: 'Execute a workflow action on a submission' })
   executeAction(@CurrentUser() user: any, @Body() dto: ExecuteActionDto) {
     return this.actionService.execute(user.id, user.role, dto);
   }
 
   @Get('pending')
+  @Roles(Role.ADMIN, Role.MANAGER, Role.USER)
   @ApiOperation({ summary: 'Danh sách submission đang chờ tôi duyệt' })
   getPending(
     @CurrentUser() user: any,
@@ -105,6 +107,7 @@ export class WorkflowController {
   // --- Workflow Query ---
 
   @Get('submissions/:submissionId/history')
+  @Roles(Role.ADMIN, Role.MANAGER, Role.USER)
   @ApiOperation({ summary: 'Get workflow history for a submission' })
   getHistory(
     @Param('submissionId') submissionId: string,
@@ -117,6 +120,7 @@ export class WorkflowController {
   }
 
   @Get('submissions/:submissionId/available-actions')
+  @Roles(Role.ADMIN, Role.MANAGER, Role.USER)
   @ApiOperation({
     summary: 'Get available actions for current user on a submission',
   })
