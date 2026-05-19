@@ -21,7 +21,7 @@ export class FileService {
         mimeType: file.mimetype,
         size: file.size,
         uploadedBy: userId,
-      },
+      } as any,
     });
   }
 
@@ -32,7 +32,7 @@ export class FileService {
         status: JobStatus.PENDING,
         progress: 0,
         createdBy: userId,
-      },
+      } as any,
     });
 
     // Thêm job vào BullMQ queue

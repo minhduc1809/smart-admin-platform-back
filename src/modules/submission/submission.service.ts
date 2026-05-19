@@ -58,7 +58,7 @@ export class SubmissionService {
           status: workflow
             ? SubmissionStatus.UNDER_REVIEW
             : SubmissionStatus.SUBMITTED,
-        },
+        } as any,
       });
 
       if (workflow) {
@@ -265,7 +265,7 @@ export class SubmissionService {
             : SubmissionStatus.SUBMITTED,
           parentSubmissionId: original.id,
           revisionNumber: original.revisionNumber + 1,
-        },
+        } as any,
       });
 
       if (workflow) {

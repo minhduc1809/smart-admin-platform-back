@@ -123,7 +123,7 @@ export class WorkflowActionService {
         action: 'resubmit',
         actorId,
         comment: dto.comment,
-      },
+      } as any,
     });
 
     this.eventEmitter.emit('workflow.resubmitted', {

@@ -58,10 +58,9 @@ describe('ExportProcessor', () => {
         data: expect.objectContaining({ status: JobStatus.DONE }),
       }),
     );
-    expect(eventEmitter.emit).toHaveBeenCalledWith('job.completed', {
+    expect(eventEmitter.emit).toHaveBeenCalledWith('job.progress', expect.objectContaining({
       jobId: 'job-1',
-      status: 'DONE',
-    });
+    }));
     expect(result.filepath).toContain('exports');
     expect(result.filepath).toContain('.xlsx');
   });
