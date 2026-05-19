@@ -23,6 +23,7 @@ import { FileModule } from './modules/file/file.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { CronModule } from './modules/cron/cron.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 
@@ -62,6 +63,7 @@ import { ConfigService } from '@nestjs/config';
     NotificationModule,
     DashboardModule,
     CronModule,
+    RealtimeModule,
   ],
   controllers: [AppController],
   providers: [
