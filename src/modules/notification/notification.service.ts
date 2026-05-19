@@ -10,8 +10,8 @@ export class NotificationService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  private async createAndEmit(data: Prisma.NotificationCreateInput) {
-    const notification = await this.prisma.notification.create({ data });
+  private async createAndEmit(args: Prisma.NotificationCreateArgs) {
+    const notification = await this.prisma.notification.create(args);
     this.eventEmitter.emit('notification.created', notification);
     return notification;
   }

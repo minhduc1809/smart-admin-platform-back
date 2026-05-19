@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { RealtimeGateway } from '../realtime.gateway';
-import {
+import type {
   NotificationCreatedPayload,
   JobProgressPayload,
   JobCompletedPayload,
