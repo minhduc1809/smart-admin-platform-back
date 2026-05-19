@@ -51,9 +51,10 @@ describe('AuthService', () => {
       role: 'USER',
       isActive: true,
       passwordHash: 'hashed',
+      tenantId: 't1',
     });
     bcryptMock.compare.mockResolvedValue(true);
-    bcryptMock.hash.mockResolvedValue('hashed-refresh');
+    (bcryptMock.hash as jest.Mock).mockResolvedValue('hashed-refresh');
     jwtService.sign
       .mockReturnValueOnce('access-token')
       .mockReturnValueOnce('refresh-token');

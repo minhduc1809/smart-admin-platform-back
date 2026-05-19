@@ -14,6 +14,7 @@ interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  tenantId: string;
   jti?: string;
 }
 
@@ -64,7 +65,7 @@ export class AuthService {
     const isValid = await bcrypt.compare(pass, user.passwordHash);
     if (!isValid) throw new UnauthorizedException('error.INVALID_CREDENTIALS');
 
-    const payload: JwtPayload & { tenantId: string } = {
+    const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
