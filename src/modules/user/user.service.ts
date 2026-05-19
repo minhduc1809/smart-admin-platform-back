@@ -35,7 +35,7 @@ export class UserService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         role: dto.role || Role.USER,
-      },
+      } as any,
       select: {
         id: true,
         email: true,

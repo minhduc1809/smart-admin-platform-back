@@ -25,7 +25,7 @@ export class WorkflowEngine {
         submissionId,
         currentStep: config.initialState,
         status: 'ACTIVE',
-      },
+      } as any,
     });
 
     const submission = await tx.submission.findUnique({
@@ -39,7 +39,7 @@ export class WorkflowEngine {
         toStep: config.initialState,
         action: 'SUBMIT',
         actorId: submission!.submittedBy,
-      },
+      } as any,
     });
 
     return instance;
@@ -99,7 +99,7 @@ export class WorkflowEngine {
         action,
         actorId,
         comment,
-      },
+      } as any,
     });
 
     // Sync submission status

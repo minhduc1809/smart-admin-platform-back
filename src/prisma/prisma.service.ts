@@ -9,17 +9,17 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
 
     this.$use(async (params, next) => {
       const tenantModels = [
-        'User', 'Form', 'Submission', 'WorkflowDefinition', 'JobRecord', 'FileRecord', 
-        'Notification', 'Setting', 'ApiKey', 'AuditLog', 'WorkflowInstance', 
+        'User', 'Form', 'Submission', 'WorkflowDefinition', 'JobRecord', 'FileRecord',
+        'Notification', 'Setting', 'ApiKey', 'AuditLog', 'WorkflowInstance',
         'WorkflowHistory', 'RefreshToken'
       ];
 
       if (params.model && tenantModels.includes(params.model)) {
         const tenantId = this.cls.get('tenantId');
-        
+
         if (tenantId) {
           params.args = params.args || {};
-          
+
           if (['findMany', 'findFirst', 'count', 'updateMany', 'deleteMany', 'findUnique', 'findFirstOrThrow', 'findUniqueOrThrow', 'update', 'delete'].includes(params.action)) {
             params.args.where = { ...params.args.where, tenantId };
           } else if (params.action === 'create') {

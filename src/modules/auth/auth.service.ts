@@ -91,7 +91,7 @@ export class AuthService {
         token: await bcrypt.hash(refreshToken, 10),
         userId: user.id,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
+      } as any,
     });
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -122,7 +122,7 @@ export class AuthService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         role: 'USER',
-      },
+      } as any,
     });
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -280,8 +280,8 @@ export class AuthService {
 
   async getMe(userId: string, keycloakId?: string) {
     const where = keycloakId ? { keycloakId } : { id: userId };
-    const user = await this.prisma.user.findUnique({
-      where,
+    const user = await this.prisma.user.findFirst({
+      where: where as any,
       select: {
         id: true,
         email: true,

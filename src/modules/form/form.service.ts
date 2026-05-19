@@ -18,7 +18,7 @@ export class FormService {
         schema: dto.schema as any,
         settings: (dto.settings || {}) as any,
         createdBy: userId,
-      },
+      } as any,
     });
   }
 

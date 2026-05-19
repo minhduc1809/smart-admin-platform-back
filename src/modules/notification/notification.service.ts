@@ -118,7 +118,7 @@ export class NotificationService {
           instanceId: payload.instanceId,
           action: payload.action,
         },
-      },
+      } as any,
     });
   }
 
@@ -160,7 +160,7 @@ export class NotificationService {
           instanceId: payload.instanceId,
           finalState: payload.finalState,
         },
-      },
+      } as any,
     });
   }
 
@@ -180,7 +180,7 @@ export class NotificationService {
           originalSubmissionId: payload.originalSubmissionId,
           newSubmissionId: payload.newSubmissionId,
         },
-      },
+      } as any,
     });
   }
 
@@ -214,7 +214,7 @@ export class NotificationService {
               submissionId,
               reminder: true,
             },
-          },
+          } as any,
         }),
       ),
     );
