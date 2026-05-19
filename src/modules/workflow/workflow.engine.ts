@@ -19,27 +19,30 @@ export class WorkflowEngine {
   ) {
     const config = workflowDefinition.config as WorkflowConfig;
 
+    const submission = await tx.submission.findUnique({
+      where: { id: submissionId },
+      select: { submittedBy: true, tenantId: true }
+    });
+
     const instance = await tx.workflowInstance.create({
       data: {
+        tenantId: submission!.tenantId,
         definitionId: workflowDefinition.id,
         submissionId,
         currentStep: config.initialState,
         status: 'ACTIVE',
-      } as any,
-    });
-
-    const submission = await tx.submission.findUnique({
-      where: { id: submissionId },
+      },
     });
 
     await tx.workflowHistory.create({
       data: {
+        tenantId: submission!.tenantId,
         instanceId: instance.id,
         fromStep: null,
         toStep: config.initialState,
         action: 'SUBMIT',
         actorId: submission!.submittedBy,
-      } as any,
+      },
     });
 
     return instance;
@@ -93,13 +96,14 @@ export class WorkflowEngine {
 
     await tx.workflowHistory.create({
       data: {
+        tenantId: instance.tenantId,
         instanceId,
         fromStep: currentState,
         toStep: newState,
         action,
         actorId,
         comment,
-      } as any,
+      },
     });
 
     // Sync submission status

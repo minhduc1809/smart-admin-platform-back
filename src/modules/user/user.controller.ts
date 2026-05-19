@@ -64,8 +64,8 @@ export class UserController {
   @Post()
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Tạo người dùng mới (Admin only)' })
-  create(@Body() dto: CreateUserDto) {
-    return this.userService.create(dto);
+  create(@CurrentUser() currentUser: any, @Body() dto: CreateUserDto) {
+    return this.userService.create(currentUser.tenantId, dto);
   }
 
   @Get(':id')
