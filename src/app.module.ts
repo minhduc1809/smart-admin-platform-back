@@ -24,6 +24,8 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { CronModule } from './modules/cron/cron.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
+import { AuditLogModule } from './modules/audit-log/audit-log.module';
+import { ApiKeyModule } from './modules/api-key/api-key.module';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 
@@ -78,6 +80,8 @@ import { ClsModule } from 'nestjs-cls';
     DashboardModule,
     CronModule,
     RealtimeModule,
+    AuditLogModule,
+    ApiKeyModule,
   ],
   controllers: [AppController],
   providers: [
