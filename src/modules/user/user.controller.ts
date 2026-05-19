@@ -44,7 +44,7 @@ export class UserController {
     @Query('limit') limit?: number,
     @Query('sort') sort?: string,
   ) {
-    return this.userService.findAll({
+    return this.userService.findMany({
       search,
       role,
       status,

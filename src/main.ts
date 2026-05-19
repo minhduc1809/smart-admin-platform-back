@@ -4,6 +4,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { I18nService } from 'nestjs-i18n';
+import { ConfigService } from '@nestjs/config';
+import { RedisIoAdapter } from './modules/realtime/adapters/redis-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -36,6 +38,15 @@ async function bootstrap() {
 
   // 5. Config CORS
   app.enableCors();
+
+  // 6. Config Redis WebSocket Adapter
+  const configService = app.get(ConfigService);
+  const redisIoAdapter = new RedisIoAdapter(app);
+  await redisIoAdapter.connectToRedis(
+    configService.get('REDIS_HOST', 'localhost'),
+    configService.get('REDIS_PORT', 6379),
+  );
+  app.useWebSocketAdapter(redisIoAdapter);
 
   await app.listen(3000);
   console.log('🚀 Server is running on: http://localhost:3000');
