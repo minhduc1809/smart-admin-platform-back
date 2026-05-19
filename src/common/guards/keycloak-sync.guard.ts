@@ -23,36 +23,36 @@ export class KeycloakSyncGuard implements CanActivate {
     // Only run sync for Keycloak tokens (they have keycloakId, not id)
     if (!tokenUser?.keycloakId) return true;
 
-    let localUser = await this.prisma.user.findUnique({
+    let dbUser = await this.prisma.user.findFirst({
       where: { keycloakId: tokenUser.keycloakId },
     });
 
-    if (!localUser) {
-      localUser = await this.prisma.user.create({
+    if (!dbUser) {
+      dbUser = await this.prisma.user.create({
         data: {
           keycloakId: tokenUser.keycloakId,
           email: tokenUser.email,
-          username: tokenUser.username || tokenUser.email,
-          role: tokenUser.role,
-        },
+          username: tokenUser.preferred_username,
+          role: 'USER',
+        } as any,
       });
-    } else if (
-      localUser.email !== tokenUser.email ||
-      localUser.role !== tokenUser.role
-    ) {
-      localUser = await this.prisma.user.update({
-        where: { keycloakId: tokenUser.keycloakId },
-        data: {
-          email: tokenUser.email,
-          role: tokenUser.role,
-        },
-      });
+    } else {
+      // Sync fields
+      if (dbUser.email !== tokenUser.email || dbUser.username !== tokenUser.preferred_username) {
+        dbUser = await this.prisma.user.update({
+          where: { id: dbUser.id },
+          data: {
+            email: tokenUser.email,
+            username: tokenUser.preferred_username,
+          },
+        });
+      }
     }
 
     // Attach local user id so downstream code works the same for both auth types
     request.user = {
       ...tokenUser,
-      id: localUser.id,
+      id: dbUser.id,
     };
 
     return true;

@@ -14,6 +14,7 @@ interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  tenantId: string;
   jti?: string;
 }
 
@@ -68,6 +69,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
+      tenantId: user.tenantId,
     };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -90,7 +92,7 @@ export class AuthService {
         token: await bcrypt.hash(refreshToken, 10),
         userId: user.id,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
+      } as any,
     });
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -121,7 +123,7 @@ export class AuthService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         role: 'USER',
-      },
+      } as any,
     });
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -172,7 +174,8 @@ export class AuthService {
           sub: payload.sub,
           email: payload.email,
           role: payload.role,
-        } as JwtPayload,
+          tenantId: (payload as any).tenantId,
+        } as JwtPayload & { tenantId: string },
         {
           secret: process.env.JWT_ACCESS_SECRET,
           expiresIn: (process.env.JWT_ACCESS_EXPIRATION ??
@@ -278,8 +281,8 @@ export class AuthService {
 
   async getMe(userId: string, keycloakId?: string) {
     const where = keycloakId ? { keycloakId } : { id: userId };
-    const user = await this.prisma.user.findUnique({
-      where,
+    const user = await this.prisma.user.findFirst({
+      where: where as any,
       select: {
         id: true,
         email: true,

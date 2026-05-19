@@ -22,7 +22,7 @@ export class WorkflowDefinitionService {
         formId: dto.formId,
         config: dto.config,
         createdBy: userId,
-      },
+      } as any,
     });
   }
 
