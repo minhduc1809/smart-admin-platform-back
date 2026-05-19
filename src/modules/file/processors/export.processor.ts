@@ -36,7 +36,7 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
   }
 
   async process(job: Job<ExportJobPayload>) {
-    const { jobId, formId, fromDate, toDate } = job.data;
+    const { jobId, formId, fromDate, toDate, userId } = job.data;
 
     try {
       // 1. Cập nhật trạng thái thành PROCESSING
@@ -45,6 +45,7 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
         data: { status: JobStatus.PROCESSING, progress: 10 },
       });
       await job.updateProgress(10);
+      this.eventEmitter.emit('job.progress', { jobId, progress: 10, userId });
 
       // 2. Lấy dữ liệu
       const whereClause: any = {
@@ -74,6 +75,7 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
         data: { progress: 40 },
       });
       await job.updateProgress(40);
+      this.eventEmitter.emit('job.progress', { jobId, progress: 40, userId });
 
       // 3. Tạo workbook Excel
       const workbook = new ExcelJS.Workbook();
@@ -100,6 +102,7 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
         data: { progress: 80 },
       });
       await job.updateProgress(80);
+      this.eventEmitter.emit('job.progress', { jobId, progress: 80, userId });
 
       // 4. Lưu file
       const filename = `export-${formId || 'all'}-${Date.now()}.xlsx`;
@@ -118,9 +121,10 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
         },
       });
       await job.updateProgress(100);
+      this.eventEmitter.emit('job.progress', { jobId, progress: 100, userId });
 
       // Phát event real-time (chuẩn bị cho Phase 14)
-      this.eventEmitter.emit('job.completed', { jobId, status: 'DONE' });
+      this.eventEmitter.emit('job.completed', { jobId, status: 'DONE', userId, filepath });
 
       return { filepath };
     } catch (error: any) {
@@ -132,7 +136,12 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
           error: error.message || 'Unknown Error',
         },
       });
-      this.eventEmitter.emit('job.completed', { jobId, status: 'FAILED' });
+      this.eventEmitter.emit('job.completed', {
+        jobId,
+        status: 'FAILED',
+        userId,
+        error: error.message || 'Unknown Error',
+      });
       throw error;
     }
   }

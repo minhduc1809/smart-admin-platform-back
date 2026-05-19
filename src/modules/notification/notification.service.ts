@@ -1,10 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class NotificationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
+
+  private async createAndEmit(data: Prisma.NotificationCreateInput) {
+    const notification = await this.prisma.notification.create({ data });
+    this.eventEmitter.emit('notification.created', notification);
+    return notification;
+  }
 
   async findMy(
     userId: string,
@@ -97,7 +107,7 @@ export class NotificationService {
 
     if (!submission || submission.submittedBy === payload.actorId) return;
 
-    await this.prisma.notification.create({
+    await this.createAndEmit({
       data: {
         userId: submission.submittedBy,
         title: 'Workflow Update',
@@ -139,7 +149,7 @@ export class NotificationService {
       title = 'Submission Returned for Edit';
     }
 
-    await this.prisma.notification.create({
+    await this.createAndEmit({
       data: {
         userId: submission.submittedBy,
         title,
@@ -159,7 +169,7 @@ export class NotificationService {
     newSubmissionId: string;
     actorId: string;
   }) {
-    await this.prisma.notification.create({
+    await this.createAndEmit({
       data: {
         userId: payload.actorId,
         title: 'Resubmission Created',
@@ -194,7 +204,7 @@ export class NotificationService {
 
     await Promise.all(
       approvers.map((approver) =>
-        this.prisma.notification.create({
+        this.createAndEmit({
           data: {
             userId: approver.id,
             title: 'Pending Approval Reminder',
