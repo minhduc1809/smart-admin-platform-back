@@ -51,11 +51,37 @@ enum JobStatus {
 // MODELS
 // -----------------------------------------------------------------------------
 
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  domain    String?  @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users               User[]
+  forms               Form[]
+  submissions         Submission[]
+  workflowDefinitions WorkflowDefinition[]
+  jobRecords          JobRecord[]
+  fileRecords         FileRecord[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  apiKeys             ApiKey[]
+  settings            Setting[]
+  workflowInstances   WorkflowInstance[]
+  workflowHistories   WorkflowHistory[]
+  refreshTokens       RefreshToken[]
+
+  @@map("tenants")
+}
+
 model User {
   id           String    @id @default(cuid())
-  keycloakId   String?   @unique @map("keycloak_id")
-  email        String    @unique
-  username     String    @unique
+  tenantId     String    @map("tenant_id")
+  keycloakId   String?   @map("keycloak_id")
+  email        String    
+  username     String    
   passwordHash String?   @map("password_hash")
   role         Role      @default(USER)
   firstName    String?
@@ -67,6 +93,7 @@ model User {
   updatedAt    DateTime  @updatedAt @map("updated_at")
   deletedAt    DateTime? @map("deleted_at")
 
+  tenant                 Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   refreshTokens          RefreshToken[]
   forms                  Form[]
   submissions            Submission[]
@@ -76,25 +103,33 @@ model User {
   fileRecords            FileRecord[]
 
   @@map("users")
+  @@unique([tenantId, email])
+  @@unique([tenantId, username])
+  @@unique([tenantId, keycloakId])
+  @@index([tenantId])
   @@index([email])
   @@index([role])
 }
 
 model RefreshToken {
   id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
   token     String   @unique
   userId    String   @map("user_id")
   expiresAt DateTime @map("expires_at")
   createdAt DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+  @@index([tenantId])
   @@index([userId])
 }
 
 model Form {
   id          String    @id @default(uuid())
+  tenantId    String    @map("tenant_id")
   name        String
   description String?
   schema      Json      // Form fields schema
@@ -106,16 +141,19 @@ model Form {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
+  tenant               Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user                 User                 @relation(fields: [createdBy], references: [id])
   submissions          Submission[]
   workflowDefinitions  WorkflowDefinition[]
 
   @@map("forms")
+  @@index([tenantId])
   @@index([createdBy])
 }
 
 model Submission {
   id                 String           @id @default(uuid())
+  tenantId           String           @map("tenant_id")
   formId             String           @map("form_id")
   data               Json             // Actual submitted data
   status             SubmissionStatus @default(DRAFT)
@@ -126,6 +164,7 @@ model Submission {
   createdAt   DateTime         @default(now()) @map("created_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
 
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   form             Form               @relation(fields: [formId], references: [id], onDelete: Restrict)
   user             User               @relation(fields: [submittedBy], references: [id])
   workflows        WorkflowInstance[]
@@ -133,6 +172,7 @@ model Submission {
   childSubmissions Submission[]       @relation("SubmissionRevisions")
 
   @@map("submissions")
+  @@index([tenantId])
   @@index([formId])
   @@index([submittedBy])
   @@index([parentSubmissionId])
@@ -140,6 +180,7 @@ model Submission {
 
 model WorkflowDefinition {
   id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
   name        String
   config      Json     // Steps and transitions
   formId      String?  @map("form_id")
@@ -148,16 +189,19 @@ model WorkflowDefinition {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   form        Form?              @relation(fields: [formId], references: [id], onDelete: SetNull)
   user        User               @relation(fields: [createdBy], references: [id])
   instances   WorkflowInstance[]
 
   @@map("workflow_definitions")
+  @@index([tenantId])
   @@index([formId])
 }
 
 model WorkflowInstance {
   id           String                 @id @default(uuid())
+  tenantId     String                 @map("tenant_id")
   definitionId String                 @map("definition_id")
   submissionId String                 @map("submission_id")
   currentStep  String                 @map("current_step")
@@ -166,17 +210,20 @@ model WorkflowInstance {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   definition   WorkflowDefinition @relation(fields: [definitionId], references: [id])
   submission   Submission         @relation(fields: [submissionId], references: [id])
   histories    WorkflowHistory[]
 
   @@map("workflow_instances")
+  @@index([tenantId])
   @@index([definitionId])
   @@index([submissionId])
 }
 
 model WorkflowHistory {
   id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
   instanceId String   @map("instance_id")
   fromStep   String?  @map("from_step")
   toStep     String   @map("to_step")
@@ -186,14 +233,17 @@ model WorkflowHistory {
 
   createdAt  DateTime @default(now()) @map("created_at")
 
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   instance   WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
   @@map("workflow_histories")
+  @@index([tenantId])
   @@index([instanceId])
 }
 
 model FileRecord {
   id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
   originalName String   @map("original_name")
   storedName   String   @map("stored_name")
   storedPath   String   @map("stored_path")
@@ -203,13 +253,16 @@ model FileRecord {
 
   createdAt    DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [uploadedBy], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [uploadedBy], references: [id])
 
   @@map("file_records")
+  @@index([tenantId])
 }
 
 model JobRecord {
   id        String    @id @default(uuid())
+  tenantId  String    @map("tenant_id")
   type      JobType
   status    JobStatus @default(PENDING)
   progress  Int       @default(0)
@@ -220,15 +273,18 @@ model JobRecord {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  user User @relation(fields: [createdBy], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [createdBy], references: [id])
 
   @@map("job_records")
+  @@index([tenantId])
   @@index([status])
   @@index([type])
 }
 
 model Notification {
   id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
   userId    String   @map("user_id")
   title     String
   content   String
@@ -238,17 +294,61 @@ model Notification {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+  @@index([tenantId])
   @@index([userId, read])
 }
 
 model Setting {
   id        String   @id @default(uuid())
-  key       String   @unique
+  tenantId  String   @map("tenant_id")
+  key       String   
   value     Json
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   @@map("settings")
+  @@unique([tenantId, key])
+  @@index([tenantId])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  actorId     String   @map("actor_id") // userId or apiKeyId
+  action      String   // CREATE, UPDATE, DELETE, EXPORT, APPROVE, REJECT
+  targetModel String   @map("target_model") // e.g. "Submission", "User"
+  targetId    String   @map("target_id")
+  oldValues   Json?    @map("old_values")
+  newValues   Json?    @map("new_values")
+  ipAddress   String?  @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+  @@index([tenantId])
+  @@index([actorId])
+  @@index([targetModel, targetId])
+}
+
+model ApiKey {
+  id        String    @id @default(uuid())
+  tenantId  String    @map("tenant_id")
+  name      String
+  keyHash   String    @map("key_hash")
+  scopes    Json?     // Array of allowed permissions/roles
+  expiresAt DateTime? @map("expires_at")
+  revoked   Boolean   @default(false)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+  @@index([tenantId])
 }
