@@ -37,7 +37,13 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
 
   // 5. Config CORS
-  app.enableCors();
+  app.enableCors(
+    {
+      origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8000'],
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+      credentials: true,
+    }
+  );
 
   // 6. Config Redis WebSocket Adapter
   const configService = app.get(ConfigService);

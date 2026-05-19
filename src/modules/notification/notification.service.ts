@@ -11,6 +11,15 @@ export class NotificationService {
   ) {}
 
   private async createAndEmit(args: Prisma.NotificationCreateArgs) {
+    if (!args.data.tenantId && args.data.userId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: args.data.userId as string },
+        select: { tenantId: true },
+      });
+      if (user) {
+        args.data.tenantId = user.tenantId;
+      }
+    }
     const notification = await this.prisma.notification.create(args);
     this.eventEmitter.emit('notification.created', notification);
     return notification;

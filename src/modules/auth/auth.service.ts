@@ -91,8 +91,9 @@ export class AuthService {
         id: jti,
         token: await bcrypt.hash(refreshToken, 10),
         userId: user.id,
+        tenantId: user.tenantId,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      } as any,
+      },
     });
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

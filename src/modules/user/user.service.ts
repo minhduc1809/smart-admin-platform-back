@@ -12,12 +12,13 @@ import * as bcrypt from 'bcrypt';
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateUserDto) {
+  async create(tenantId: string, dto: CreateUserDto) {
     const email = dto.email.toLowerCase();
     const username = dto.username.toLowerCase();
 
     const existing = await this.prisma.user.findFirst({
       where: {
+        tenantId,
         OR: [{ email }, { username }],
       },
     });
@@ -29,13 +30,14 @@ export class UserService {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
       data: {
+        tenantId,
         email,
         username,
         passwordHash: hashedPassword,
         firstName: dto.firstName,
         lastName: dto.lastName,
         role: dto.role || Role.USER,
-      } as any,
+      },
       select: {
         id: true,
         email: true,
