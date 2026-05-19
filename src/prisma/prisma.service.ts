@@ -20,7 +20,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
         if (tenantId) {
           params.args = params.args || {};
 
-          if (['findMany', 'findFirst', 'count', 'updateMany', 'deleteMany', 'findUnique', 'findFirstOrThrow', 'findUniqueOrThrow', 'update', 'delete'].includes(params.action)) {
+          if (['findMany', 'findFirst', 'findFirstOrThrow', 'count', 'updateMany', 'deleteMany'].includes(params.action)) {
             params.args.where = { ...params.args.where, tenantId };
           } else if (params.action === 'create') {
             params.args.data = { ...params.args.data, tenantId };
@@ -29,8 +29,22 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
               params.args.data = params.args.data.map((item: any) => ({ ...item, tenantId }));
             }
           } else if (params.action === 'upsert') {
-            params.args.where = { ...params.args.where, tenantId };
+            // Upsert where is unique, so we can't inject tenantId. 
+            // We just inject into create.
             params.args.create = { ...params.args.create, tenantId };
+          } else if (['findUnique', 'findUniqueOrThrow', 'update', 'delete'].includes(params.action)) {
+            // For operations requiring unique input, we check ownership BEFORE mutation/returning
+            // findFirst will automatically have tenantId injected by this very middleware!
+            const existing = await (this as any)[params.model].findFirst({
+              where: params.args.where,
+              select: { id: true }
+            });
+            
+            if (!existing) {
+              if (params.action.includes('Throw')) throw new Error('Not found');
+              if (params.action === 'findUnique') return null;
+              throw new Error(`Cannot ${params.action} record: Not found or unauthorized`);
+            }
           }
         }
       }

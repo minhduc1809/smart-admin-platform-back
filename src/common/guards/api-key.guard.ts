@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ClsService } from 'nestjs-cls';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
@@ -13,16 +14,18 @@ export class ApiKeyGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const apiKeyHeader = request.headers['x-api-key'];
 
-    if (!apiKeyHeader) {
+    if (!apiKeyHeader || typeof apiKeyHeader !== 'string') {
       throw new UnauthorizedException('API Key is missing');
     }
 
-    // Bypass RLS tenantId injection because we don't have tenantId yet, and key is globally unique
-    const apiKey = await this.prisma.apiKey.findUnique({
-      where: { key: apiKeyHeader },
+    const keyHash = crypto.createHash('sha256').update(apiKeyHeader).digest('hex');
+
+    // Bypass RLS tenantId injection because we don't have tenantId yet
+    const apiKey = await this.prisma.apiKey.findFirst({
+      where: { keyHash },
     });
 
-    if (!apiKey || !apiKey.isActive) {
+    if (!apiKey || apiKey.revoked) {
       throw new UnauthorizedException('Invalid or inactive API Key');
     }
 
@@ -30,20 +33,14 @@ export class ApiKeyGuard implements CanActivate {
       throw new UnauthorizedException('API Key has expired');
     }
 
-    // Update last used asynchronously. We cast where to any to bypass RLS tenant injection in Prisma middleware
-    this.prisma.apiKey.update({
-      where: { id: apiKey.id } as any,
-      data: { lastUsedAt: new Date() },
-    }).catch(() => {});
-
     // Bind context for downstream services
     this.cls.set('tenantId', apiKey.tenantId);
-    this.cls.set('userId', apiKey.createdBy);
+    this.cls.set('userId', 'API_KEY_SYSTEM');
     this.cls.set('apiKeyScopes', apiKey.scopes);
     
     // Set user object on request
     request.user = {
-      id: apiKey.createdBy,
+      id: 'API_KEY_SYSTEM',
       tenantId: apiKey.tenantId,
       role: 'API_CLIENT',
       scopes: apiKey.scopes

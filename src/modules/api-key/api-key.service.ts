@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { randomBytes } from 'crypto';
+import * as crypto from 'crypto';
 import { ClsService } from 'nestjs-cls';
 import { ApiKeyDto } from './dto/api-key.dto';
 
@@ -9,18 +9,19 @@ export class ApiKeyService {
   constructor(private prisma: PrismaService, private cls: ClsService) {}
 
   async createApiKey(dto: ApiKeyDto) {
-    const key = `sk_${randomBytes(24).toString('hex')}`;
-    const userId = this.cls.get('userId');
+    const key = `sk_${crypto.randomBytes(24).toString('hex')}`;
+    const keyHash = crypto.createHash('sha256').update(key).digest('hex');
 
-    return this.prisma.apiKey.create({
+    const apiKey = await this.prisma.apiKey.create({
       data: {
         name: dto.name,
-        key,
-        scopes: dto.scopes,
+        keyHash,
+        scopes: dto.scopes ? JSON.stringify(dto.scopes) : null,
         expiresAt: dto.expiresAt,
-        createdBy: userId || 'SYSTEM',
       } as any,
     });
+
+    return { ...apiKey, key }; // return raw key only once
   }
 
   async listApiKeys() {
@@ -30,12 +31,12 @@ export class ApiKeyService {
   }
 
   async revokeApiKey(id: string) {
-    const key = await this.prisma.apiKey.findUnique({ where: { id } });
+    const key = await this.prisma.apiKey.findUnique({ where: { id } as any });
     if (!key) throw new NotFoundException('api_key.NOT_FOUND');
 
     return this.prisma.apiKey.update({
-      where: { id },
-      data: { isActive: false }
+      where: { id } as any,
+      data: { revoked: true } as any
     });
   }
 }
