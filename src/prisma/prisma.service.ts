@@ -1,8 +1,44 @@
 import { Injectable, OnModuleInit, INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { ClsService } from 'nestjs-cls';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit {
+  constructor(private readonly cls: ClsService) {
+    super();
+
+    this.$use(async (params, next) => {
+      const tenantModels = [
+        'User', 'Form', 'Submission', 'WorkflowDefinition', 'JobRecord', 'FileRecord', 
+        'Notification', 'Setting', 'ApiKey', 'AuditLog', 'WorkflowInstance', 
+        'WorkflowHistory', 'RefreshToken'
+      ];
+
+      if (params.model && tenantModels.includes(params.model)) {
+        const tenantId = this.cls.get('tenantId');
+        
+        if (tenantId) {
+          params.args = params.args || {};
+          
+          if (['findMany', 'findFirst', 'count', 'updateMany', 'deleteMany', 'findUnique', 'findFirstOrThrow', 'findUniqueOrThrow', 'update', 'delete'].includes(params.action)) {
+            params.args.where = { ...params.args.where, tenantId };
+          } else if (params.action === 'create') {
+            params.args.data = { ...params.args.data, tenantId };
+          } else if (params.action === 'createMany') {
+            if (Array.isArray(params.args.data)) {
+              params.args.data = params.args.data.map((item: any) => ({ ...item, tenantId }));
+            }
+          } else if (params.action === 'upsert') {
+            params.args.where = { ...params.args.where, tenantId };
+            params.args.create = { ...params.args.create, tenantId };
+          }
+        }
+      }
+
+      return next(params);
+    });
+  }
+
   async onModuleInit() {
     await this.$connect();
   }

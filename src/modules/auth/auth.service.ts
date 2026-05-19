@@ -64,10 +64,11 @@ export class AuthService {
     const isValid = await bcrypt.compare(pass, user.passwordHash);
     if (!isValid) throw new UnauthorizedException('error.INVALID_CREDENTIALS');
 
-    const payload: JwtPayload = {
+    const payload: JwtPayload & { tenantId: string } = {
       sub: user.id,
       email: user.email,
       role: user.role,
+      tenantId: user.tenantId,
     };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -172,7 +173,8 @@ export class AuthService {
           sub: payload.sub,
           email: payload.email,
           role: payload.role,
-        } as JwtPayload,
+          tenantId: (payload as any).tenantId,
+        } as JwtPayload & { tenantId: string },
         {
           secret: process.env.JWT_ACCESS_SECRET,
           expiresIn: (process.env.JWT_ACCESS_EXPIRATION ??
