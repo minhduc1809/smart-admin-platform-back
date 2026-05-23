@@ -48,10 +48,13 @@ export class SubmissionService {
       where: { formId: dto.formId },
     });
 
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tenantId: true } });
+
     // 4. Save submission + initiate workflow (in a transaction)
     const submission = await this.prisma.$transaction(async (tx) => {
       const sub = await tx.submission.create({
         data: {
+          tenantId: user!.tenantId,
           formId: dto.formId,
           submittedBy: userId,
           data: dto.data,
@@ -255,8 +258,11 @@ export class SubmissionService {
         });
       }
 
+      const user = await tx.user.findUnique({ where: { id: userId }, select: { tenantId: true } });
+
       const sub = await tx.submission.create({
         data: {
+          tenantId: user!.tenantId,
           formId: original.formId,
           submittedBy: userId,
           data,

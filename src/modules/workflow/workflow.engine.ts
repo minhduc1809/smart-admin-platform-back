@@ -19,8 +19,14 @@ export class WorkflowEngine {
   ) {
     const config = workflowDefinition.config as WorkflowConfig;
 
+    const submission = await tx.submission.findUnique({
+      where: { id: submissionId },
+      select: { submittedBy: true, tenantId: true }
+    });
+
     const instance = await tx.workflowInstance.create({
       data: {
+        tenantId: submission!.tenantId,
         definitionId: workflowDefinition.id,
         submissionId,
         currentStep: config.initialState,
@@ -28,12 +34,9 @@ export class WorkflowEngine {
       },
     });
 
-    const submission = await tx.submission.findUnique({
-      where: { id: submissionId },
-    });
-
     await tx.workflowHistory.create({
       data: {
+        tenantId: submission!.tenantId,
         instanceId: instance.id,
         fromStep: null,
         toStep: config.initialState,
@@ -93,6 +96,7 @@ export class WorkflowEngine {
 
     await tx.workflowHistory.create({
       data: {
+        tenantId: instance.tenantId,
         instanceId,
         fromStep: currentState,
         toStep: newState,

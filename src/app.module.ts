@@ -23,11 +23,28 @@ import { FileModule } from './modules/file/file.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { CronModule } from './modules/cron/cron.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
+import { AuditLogModule } from './modules/audit-log/audit-log.module';
+import { ApiKeyModule } from './modules/api-key/api-key.module';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 
+import { ClsModule } from 'nestjs-cls';
+
 @Module({
   imports: [
+    ClsModule.forRoot({
+      global: true,
+      middleware: {
+        mount: true,
+        setup: (cls, req: any) => {
+          const tenantId = req.headers['x-tenant-id'];
+          if (tenantId) {
+            cls.set('tenantId', tenantId as string);
+          }
+        },
+      },
+    }),
     ConfigModule.forRoot({ isGlobal: true }),
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
@@ -62,6 +79,9 @@ import { ConfigService } from '@nestjs/config';
     NotificationModule,
     DashboardModule,
     CronModule,
+    RealtimeModule,
+    AuditLogModule,
+    ApiKeyModule,
   ],
   controllers: [AppController],
   providers: [

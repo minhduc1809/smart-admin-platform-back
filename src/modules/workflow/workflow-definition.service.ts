@@ -16,8 +16,11 @@ export class WorkflowDefinitionService {
   async create(userId: string, dto: CreateWorkflowDefinitionDto) {
     this.validateConfig(dto.config as unknown as WorkflowConfig);
 
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tenantId: true } });
+
     return this.prisma.workflowDefinition.create({
       data: {
+        tenantId: user!.tenantId,
         name: dto.name,
         formId: dto.formId,
         config: dto.config,

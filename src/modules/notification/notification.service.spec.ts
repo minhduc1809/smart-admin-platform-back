@@ -3,9 +3,13 @@ import { NotificationService } from './notification.service';
 
 describe('NotificationService', () => {
   let prisma: any;
+  let eventEmitter: any;
   let service: NotificationService;
 
   beforeEach(() => {
+    eventEmitter = {
+      emit: jest.fn(),
+    };
     prisma = {
       notification: {
         count: jest.fn(),
@@ -22,7 +26,7 @@ describe('NotificationService', () => {
       },
     };
 
-    service = new NotificationService(prisma);
+    service = new NotificationService(prisma, eventEmitter);
   });
 
   it('getUnreadCount returns unread count', async () => {

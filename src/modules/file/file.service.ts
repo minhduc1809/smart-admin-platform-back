@@ -13,8 +13,10 @@ export class FileService {
   ) {}
 
   async uploadFile(file: Express.Multer.File, userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tenantId: true }});
     return this.prisma.fileRecord.create({
       data: {
+        tenantId: user!.tenantId,
         originalName: file.originalname,
         storedName: file.filename,
         storedPath: file.path,
@@ -26,8 +28,10 @@ export class FileService {
   }
 
   async createExportJob(userId: string, dto: ExportFilterDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tenantId: true }});
     const jobRecord = await this.prisma.jobRecord.create({
       data: {
+        tenantId: user!.tenantId,
         type: JobType.EXPORT,
         status: JobStatus.PENDING,
         progress: 0,

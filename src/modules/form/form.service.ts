@@ -11,12 +11,16 @@ export class FormService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateFormDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tenantId: true } });
+    if (!user) throw new NotFoundException('User not found');
+    
     return this.prisma.form.create({
       data: {
+        tenantId: user.tenantId,
         name: dto.name,
         description: dto.description,
-        schema: dto.schema as any,
-        settings: (dto.settings || {}) as any,
+        schema: dto.schema || {},
+        settings: dto.settings || {},
         createdBy: userId,
       },
     });
@@ -77,8 +81,8 @@ export class FormService {
       data: {
         ...(dto.name && { name: dto.name }),
         ...(dto.description !== undefined && { description: dto.description }),
-        ...(dto.schema && { schema: dto.schema as any }),
-        ...(dto.settings && { settings: dto.settings as any }),
+        ...(dto.schema && { schema: dto.schema || {} }),
+        ...(dto.settings && { settings: dto.settings || {} }),
       },
     });
   }

@@ -117,6 +117,7 @@ export class WorkflowActionService {
     // Record resubmit in the old instance's history
     await this.prisma.workflowHistory.create({
       data: {
+        tenantId: latestInstance.tenantId,
         instanceId: latestInstance.id,
         fromStep: currentState,
         toStep: 'resubmitted',

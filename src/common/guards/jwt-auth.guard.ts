@@ -2,10 +2,14 @@ import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/com
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { ClsService } from 'nestjs-cls';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard(['keycloak', 'jwt']) {
-  constructor(private reflector: Reflector) {
+  constructor(
+    private reflector: Reflector,
+    private readonly cls: ClsService,
+  ) {
     super();
   }
 
@@ -23,6 +27,9 @@ export class JwtAuthGuard extends AuthGuard(['keycloak', 'jwt']) {
   handleRequest(err: any, user: any, info: any) {
     if (err || !user) {
       throw err || new UnauthorizedException('auth.UNAUTHORIZED');
+    }
+    if (user.tenantId) {
+      this.cls.set('tenantId', user.tenantId);
     }
     return user;
   }
