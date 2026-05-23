@@ -267,16 +267,12 @@ export class UserService {
 
     const data: any = { ...dto };
     if (dto.email) data.email = dto.email.toLowerCase();
-    if (dto.username) data.username = dto.username.toLowerCase();
 
-    if (data.email || data.username) {
+    if (data.email) {
       const existing = await this.prisma.user.findFirst({
         where: {
           id: { not: id },
-          OR: [
-            data.email ? { email: data.email } : null,
-            data.username ? { username: data.username } : null,
-          ].filter(Boolean) as Prisma.UserWhereInput[],
+          email: data.email,
         },
       });
       if (existing) throw new ConflictException('user.ALREADY_EXISTS');
@@ -292,18 +288,10 @@ export class UserService {
     const user = await this.getProfile(userId);
 
     const data: any = { ...dto };
-    if (dto.email) data.email = dto.email.toLowerCase();
-
-    if (data.email && data.email !== user.email) {
-      const existing = await this.prisma.user.findFirst({
-        where: { email: data.email, id: { not: userId } },
-      });
-      if (existing) throw new ConflictException('user.EMAIL_EXISTS');
-    }
 
     return this.prisma.user.update({
       where: { id: userId },
-      data: data,
+      data,
       select: {
         id: true,
         email: true,

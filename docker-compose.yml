@@ -55,7 +55,7 @@ services:
     container_name: saas_redis_dev
     restart: always
     ports:
-      - '6379:6379'
+      - '6800:6379'
     volumes:
       - redis_data:/data
     healthcheck:
