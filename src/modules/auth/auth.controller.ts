@@ -4,7 +4,6 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { Public } from 'src/common/decorators/public.decorator';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @ApiTags('Auth')
@@ -23,15 +22,6 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Returns access & refresh tokens along with user info' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
-  }
-
-  @Public()
-  @Post('register')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Register a new local account' })
-  @ApiResponse({ status: 201, description: 'Returns new user info' })
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
   }
 
   @Public()
