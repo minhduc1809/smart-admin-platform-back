@@ -5,75 +5,23 @@
   - A unique constraint covering the columns `[tenant_id,email]` on the table `users` will be added. If there are existing duplicate values, this will fail.
   - A unique constraint covering the columns `[tenant_id,username]` on the table `users` will be added. If there are existing duplicate values, this will fail.
   - A unique constraint covering the columns `[tenant_id,keycloak_id]` on the table `users` will be added. If there are existing duplicate values, this will fail.
-  - Added the required column `tenant_id` to the `file_records` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `tenant_id` to the `forms` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `tenant_id` to the `job_records` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `tenant_id` to the `notifications` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `tenant_id` to the `refresh_tokens` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `tenant_id` to the `settings` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `tenant_id` to the `submissions` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `tenant_id` to the `users` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `tenant_id` to the `workflow_definitions` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `tenant_id` to the `workflow_histories` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `tenant_id` to the `workflow_instances` table without a default value. This is not possible if the table is not empty.
-
 */
--- DropIndex
-DROP INDEX "settings_key_key";
 
--- DropIndex
-DROP INDEX "users_email_key";
-
--- DropIndex
-DROP INDEX "users_keycloak_id_key";
-
--- DropIndex
-DROP INDEX "users_username_key";
-
--- AlterTable
-ALTER TABLE "file_records" ADD COLUMN     "tenant_id" TEXT NOT NULL;
-
--- AlterTable
-ALTER TABLE "forms" ADD COLUMN     "tenant_id" TEXT NOT NULL;
-
--- AlterTable
-ALTER TABLE "job_records" ADD COLUMN     "tenant_id" TEXT NOT NULL;
-
--- AlterTable
-ALTER TABLE "notifications" ADD COLUMN     "tenant_id" TEXT NOT NULL;
-
--- AlterTable
-ALTER TABLE "refresh_tokens" ADD COLUMN     "tenant_id" TEXT NOT NULL;
-
--- AlterTable
-ALTER TABLE "settings" ADD COLUMN     "tenant_id" TEXT NOT NULL;
-
--- AlterTable
-ALTER TABLE "submissions" ADD COLUMN     "tenant_id" TEXT NOT NULL;
-
--- AlterTable
-ALTER TABLE "users" ADD COLUMN     "tenant_id" TEXT NOT NULL;
-
--- AlterTable
-ALTER TABLE "workflow_definitions" ADD COLUMN     "tenant_id" TEXT NOT NULL;
-
--- AlterTable
-ALTER TABLE "workflow_histories" ADD COLUMN     "tenant_id" TEXT NOT NULL;
-
--- AlterTable
-ALTER TABLE "workflow_instances" ADD COLUMN     "tenant_id" TEXT NOT NULL;
-
--- CreateTable
+-- CreateTable (must come first so FK references work)
 CREATE TABLE "tenants" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "domain" TEXT,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "tenants_pkey" PRIMARY KEY ("id")
 );
+
+-- Seed a default tenant for existing rows
+INSERT INTO "tenants" ("id", "name", "domain", "is_active", "updated_at")
+VALUES ('default', 'Default Tenant', NULL, true, CURRENT_TIMESTAMP);
 
 -- CreateTable
 CREATE TABLE "audit_logs" (
@@ -105,6 +53,52 @@ CREATE TABLE "api_keys" (
 
     CONSTRAINT "api_keys_pkey" PRIMARY KEY ("id")
 );
+
+-- DropIndex
+DROP INDEX "settings_key_key";
+
+-- DropIndex
+DROP INDEX "users_email_key";
+
+-- DropIndex
+DROP INDEX "users_keycloak_id_key";
+
+-- DropIndex
+DROP INDEX "users_username_key";
+
+-- AlterTable: add tenant_id with default for existing rows, then drop default
+ALTER TABLE "file_records" ADD COLUMN "tenant_id" TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE "file_records" ALTER COLUMN "tenant_id" DROP DEFAULT;
+
+ALTER TABLE "forms" ADD COLUMN "tenant_id" TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE "forms" ALTER COLUMN "tenant_id" DROP DEFAULT;
+
+ALTER TABLE "job_records" ADD COLUMN "tenant_id" TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE "job_records" ALTER COLUMN "tenant_id" DROP DEFAULT;
+
+ALTER TABLE "notifications" ADD COLUMN "tenant_id" TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE "notifications" ALTER COLUMN "tenant_id" DROP DEFAULT;
+
+ALTER TABLE "refresh_tokens" ADD COLUMN "tenant_id" TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE "refresh_tokens" ALTER COLUMN "tenant_id" DROP DEFAULT;
+
+ALTER TABLE "settings" ADD COLUMN "tenant_id" TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE "settings" ALTER COLUMN "tenant_id" DROP DEFAULT;
+
+ALTER TABLE "submissions" ADD COLUMN "tenant_id" TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE "submissions" ALTER COLUMN "tenant_id" DROP DEFAULT;
+
+ALTER TABLE "users" ADD COLUMN "tenant_id" TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE "users" ALTER COLUMN "tenant_id" DROP DEFAULT;
+
+ALTER TABLE "workflow_definitions" ADD COLUMN "tenant_id" TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE "workflow_definitions" ALTER COLUMN "tenant_id" DROP DEFAULT;
+
+ALTER TABLE "workflow_histories" ADD COLUMN "tenant_id" TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE "workflow_histories" ALTER COLUMN "tenant_id" DROP DEFAULT;
+
+ALTER TABLE "workflow_instances" ADD COLUMN "tenant_id" TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE "workflow_instances" ALTER COLUMN "tenant_id" DROP DEFAULT;
 
 -- CreateIndex
 CREATE UNIQUE INDEX "tenants_domain_key" ON "tenants"("domain");

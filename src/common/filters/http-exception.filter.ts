@@ -11,6 +11,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
         const response = ctx.getResponse<Response>();
         const request = ctx.getRequest<any>();
 
+        if (!(exception instanceof HttpException)) {
+            console.error('[UnhandledException]', exception);
+        }
+
         const status =
             exception instanceof HttpException
                 ? exception.getStatus()
@@ -37,11 +41,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
             }
         }
 
+        const isDev = process.env.NODE_ENV !== 'production';
+        const debugInfo = isDev && status >= 500 && exception instanceof Error
+            ? { name: exception.name, message: exception.message, stack: exception.stack }
+            : undefined;
         response.status(status).json({
             success: false,
             statusCode: status,
             message: messageStr,
             data: null,
+            ...(debugInfo && { debug: debugInfo }),
         });
     }
 }
