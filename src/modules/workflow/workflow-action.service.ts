@@ -317,7 +317,7 @@ export class WorkflowActionService {
       include: {
         submission: {
           include: {
-            form: { select: { name: true } },
+            form: { select: { name: true, schema: true } },
             user: { select: { email: true, username: true } },
           },
         },
@@ -343,12 +343,22 @@ export class WorkflowActionService {
 
     return {
       items: instances.map((inst) => ({
-        instanceId: inst.id,
+        id: inst.id,
         submissionId: inst.submissionId,
         currentStep: inst.currentStep,
-        formName: inst.submission.form.name,
-        submittedBy: inst.submission.user.email,
+        status: inst.status,
         createdAt: inst.createdAt,
+        updatedAt: inst.updatedAt,
+        definitionId: inst.definitionId,
+        submission: {
+          id: inst.submission.id,
+          data: inst.submission.data,
+          status: inst.submission.status,
+          submittedBy: inst.submission.submittedBy,
+          createdAt: inst.submission.createdAt,
+          form: inst.submission.form,
+          user: inst.submission.user,
+        },
       })),
       meta: {
         total,

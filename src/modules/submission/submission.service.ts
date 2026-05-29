@@ -90,7 +90,7 @@ export class SubmissionService {
     const [data, total] = await this.prisma.$transaction([
       this.prisma.submission.findMany({
         where,
-        include: { form: { select: { name: true } } },
+        include: { form: { select: { name: true, schema: true } } },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -117,7 +117,7 @@ export class SubmissionService {
       this.prisma.submission.findMany({
         where,
         include: {
-          form: { select: { name: true } },
+          form: { select: { name: true, schema: true } },
           user: { select: { email: true, username: true } },
         },
         orderBy: { createdAt: 'desc' },
