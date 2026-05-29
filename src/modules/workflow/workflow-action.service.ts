@@ -160,12 +160,25 @@ export class WorkflowActionService {
       throw new NotFoundException('workflow.INSTANCE_NOT_FOUND');
     }
 
+    const actorIds = [...new Set(instance.histories.map((h) => h.actorId))];
+    const actors = await this.prisma.user.findMany({
+      where: { id: { in: actorIds } },
+      select: { id: true, email: true, username: true, firstName: true, lastName: true },
+    });
+    const actorMap = new Map(actors.map((a) => [a.id, a]));
+
     return {
       instanceId: instance.id,
       currentStep: instance.currentStep,
       status: instance.status,
       workflowName: instance.definition.name,
-      history: instance.histories,
+      history: instance.histories.map((h) => {
+        const actor = actorMap.get(h.actorId);
+        return {
+          ...h,
+          actor: actor ? { id: actor.id, email: actor.email, name: actor.username || `${actor.firstName ?? ''} ${actor.lastName ?? ''}`.trim() || actor.email } : null,
+        };
+      }),
     };
   }
 
@@ -214,6 +227,13 @@ export class WorkflowActionService {
       orderBy: { createdAt: 'asc' },
     });
 
+    const allActorIds = [...new Set(instances.flatMap((inst) => inst.histories.map((h) => h.actorId)))];
+    const allActors = await this.prisma.user.findMany({
+      where: { id: { in: allActorIds } },
+      select: { id: true, email: true, username: true, firstName: true, lastName: true },
+    });
+    const actorMap = new Map(allActors.map((a) => [a.id, a]));
+
     return {
       revisionChain: chain,
       revisions: instances.map((inst) => ({
@@ -223,7 +243,13 @@ export class WorkflowActionService {
         currentStep: inst.currentStep,
         status: inst.status,
         workflowName: inst.definition.name,
-        history: inst.histories,
+        history: inst.histories.map((h) => {
+          const actor = actorMap.get(h.actorId);
+          return {
+            ...h,
+            actor: actor ? { id: actor.id, email: actor.email, name: actor.username || `${actor.firstName ?? ''} ${actor.lastName ?? ''}`.trim() || actor.email } : null,
+          };
+        }),
       })),
     };
   }
@@ -310,10 +336,11 @@ export class WorkflowActionService {
       .map((inst) => inst.id);
 
     const total = matchingIds.length;
+    const paginatedIds = matchingIds.slice(skip, skip + limit);
 
-    // Pass 2: paginate over the filtered IDs with full includes
+    // Pass 2: fetch paginated IDs with full includes
     const instances = await this.prisma.workflowInstance.findMany({
-      where: { id: { in: matchingIds } },
+      where: { id: { in: paginatedIds } },
       include: {
         submission: {
           include: {
@@ -324,21 +351,6 @@ export class WorkflowActionService {
         definition: true,
       },
       orderBy: { createdAt: 'desc' },
-      skip,
-      take: limit,
-    });
-
-    const pending = instances.filter((inst) => {
-      const config = inst.definition.config as unknown as WorkflowConfig;
-      const currentState = inst.currentStep;
-      return config.transitions.some((t) => {
-        const fromMatch = Array.isArray(t.from)
-          ? t.from.includes(currentState)
-          : t.from === currentState || t.from === '*';
-        const roleMatch =
-          t.roles && t.roles.length > 0 && t.roles.includes(userRole);
-        return fromMatch && roleMatch;
-      });
     });
 
     return {
