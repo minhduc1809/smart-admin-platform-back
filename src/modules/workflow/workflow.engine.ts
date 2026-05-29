@@ -16,17 +16,13 @@ export class WorkflowEngine {
     tx: Prisma.TransactionClient,
     submissionId: string,
     workflowDefinition: { id: string; config: any },
+    context: { tenantId: string; submittedBy: string },
   ) {
     const config = workflowDefinition.config as WorkflowConfig;
 
-    const submission = await tx.submission.findUnique({
-      where: { id: submissionId },
-      select: { submittedBy: true, tenantId: true }
-    });
-
     const instance = await tx.workflowInstance.create({
       data: {
-        tenantId: submission!.tenantId,
+        tenantId: context.tenantId,
         definitionId: workflowDefinition.id,
         submissionId,
         currentStep: config.initialState,
@@ -36,12 +32,12 @@ export class WorkflowEngine {
 
     await tx.workflowHistory.create({
       data: {
-        tenantId: submission!.tenantId,
+        tenantId: context.tenantId,
         instanceId: instance.id,
         fromStep: null,
         toStep: config.initialState,
         action: 'SUBMIT',
-        actorId: submission!.submittedBy,
+        actorId: context.submittedBy,
       },
     });
 

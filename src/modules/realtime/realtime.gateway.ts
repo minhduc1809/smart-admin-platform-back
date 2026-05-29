@@ -47,7 +47,12 @@ export class RealtimeGateway
       }
 
       // 2. Verify JWT token
-      const secret = this.configService.get<string>('JWT_ACCESS_SECRET');
+      const secret = this.configService.get<string>('JWT_ACCESS_SECRET') || process.env.JWT_ACCESS_SECRET;
+      if (!secret) {
+        this.logger.error('JWT_ACCESS_SECRET is not configured');
+        client.disconnect(true);
+        return;
+      }
       const payload = this.jwtService.verify(token, { secret });
       
       const userId = payload.sub;

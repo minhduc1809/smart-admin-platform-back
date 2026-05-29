@@ -65,7 +65,10 @@ export class SubmissionService {
       });
 
       if (workflow) {
-        await this.workflowEngine.initiate(tx, sub.id, workflow);
+        await this.workflowEngine.initiate(tx, sub.id, workflow, {
+          tenantId: user!.tenantId,
+          submittedBy: userId,
+        });
       }
 
       return sub;
@@ -275,7 +278,10 @@ export class SubmissionService {
       });
 
       if (workflow) {
-        await this.workflowEngine.initiate(tx, sub.id, workflow);
+        await this.workflowEngine.initiate(tx, sub.id, workflow, {
+          tenantId: user!.tenantId,
+          submittedBy: userId,
+        });
       }
 
       return sub;

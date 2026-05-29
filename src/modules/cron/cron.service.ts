@@ -80,6 +80,19 @@ export class CronService {
     }
   }
 
+  @Cron('0 2 * * *', {
+    name: 'cleanup-expired-refresh-tokens',
+    timeZone: 'Asia/Ho_Chi_Minh',
+  })
+  async cleanupExpiredRefreshTokens() {
+    const deleted = await this.prisma.refreshToken.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    });
+    if (deleted.count > 0) {
+      this.logger.log(`Cleaned up ${deleted.count} expired refresh tokens.`);
+    }
+  }
+
   @Cron('0 * * * *', {
     name: 'remind-pending',
     timeZone: 'Asia/Ho_Chi_Minh',
