@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import type { StringValue } from 'ms';
+import ms from 'ms';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 
@@ -78,11 +79,12 @@ export class AuthService {
     });
 
     const jti = randomUUID();
+    const refreshExpiration = (process.env.JWT_REFRESH_EXPIRATION ?? '7d') as StringValue;
     const refreshToken = this.jwtService.sign(
       { ...payload, jti },
       {
         secret: process.env.JWT_REFRESH_SECRET,
-        expiresIn: (process.env.JWT_REFRESH_EXPIRATION ?? '7d') as StringValue,
+        expiresIn: refreshExpiration,
       },
     );
 
@@ -92,7 +94,7 @@ export class AuthService {
         token: await bcrypt.hash(refreshToken, 10),
         userId: user.id,
         tenantId: user.tenantId,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + ms(refreshExpiration)),
       },
     });
 
@@ -140,7 +142,6 @@ export class AuthService {
       let validRecord: any = null;
 
       if (payload.jti) {
-        // O(1) lookup by jti — single DB hit + single bcrypt compare
         const t = await this.prisma.refreshToken.findUnique({
           where: { id: payload.jti },
         });
@@ -152,7 +153,6 @@ export class AuthService {
           validRecord = t;
         }
       } else {
-        // Fallback for legacy tokens without jti
         const tokens = await this.prisma.refreshToken.findMany({
           where: { userId: payload.sub },
         });
@@ -170,30 +170,56 @@ export class AuthService {
       if (!validRecord)
         throw new UnauthorizedException('error.INVALID_REFRESH_TOKEN');
 
-      const newAccessToken = this.jwtService.sign(
+      // Delete the old refresh token
+      await this.prisma.refreshToken.delete({ where: { id: validRecord.id } });
+
+      const jwtPayload: JwtPayload = {
+        sub: payload.sub,
+        email: payload.email,
+        role: payload.role,
+        tenantId: payload.tenantId,
+      };
+
+      const newAccessToken = this.jwtService.sign(jwtPayload, {
+        secret: process.env.JWT_ACCESS_SECRET,
+        expiresIn: (process.env.JWT_ACCESS_EXPIRATION ?? '15m') as StringValue,
+      });
+
+      // Rotate: issue a new refresh token
+      const newJti = randomUUID();
+      const refreshExpiration = (process.env.JWT_REFRESH_EXPIRATION ?? '7d') as StringValue;
+      const newRefreshToken = this.jwtService.sign(
+        { ...jwtPayload, jti: newJti },
         {
-          sub: payload.sub,
-          email: payload.email,
-          role: payload.role,
-          tenantId: (payload as any).tenantId,
-        } as JwtPayload & { tenantId: string },
-        {
-          secret: process.env.JWT_ACCESS_SECRET,
-          expiresIn: (process.env.JWT_ACCESS_EXPIRATION ??
-            '15m') as StringValue,
+          secret: process.env.JWT_REFRESH_SECRET,
+          expiresIn: refreshExpiration,
         },
       );
 
-      return { accessToken: newAccessToken };
-    } catch {
+      await this.prisma.refreshToken.create({
+        data: {
+          id: newJti,
+          token: await bcrypt.hash(newRefreshToken, 10),
+          userId: payload.sub,
+          tenantId: payload.tenantId,
+          expiresAt: new Date(Date.now() + ms(refreshExpiration)),
+        },
+      });
+
+      return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
       throw new UnauthorizedException('error.INVALID_REFRESH_TOKEN');
     }
   }
 
   async logout(token: string, userId: string) {
-    // Fast path: decode jti for O(1) lookup
     try {
-      const payload = this.jwtService.decode(token) as JwtPayload;
+      const payload = this.jwtService.verify<JwtPayload>(token, {
+        secret: process.env.JWT_REFRESH_SECRET,
+        ignoreExpiration: true,
+      });
+
       if (payload?.jti) {
         const t = await this.prisma.refreshToken.findUnique({
           where: { id: payload.jti },
@@ -203,20 +229,21 @@ export class AuthService {
         }
         return { success: true };
       }
-    } catch {
-      // Decode failed — fall through to legacy path
-    }
 
-    // Legacy fallback for tokens without jti
-    const tokens = await this.prisma.refreshToken.findMany({
-      where: { userId },
-    });
-    for (const t of tokens) {
-      if (await bcrypt.compare(token, t.token)) {
-        await this.prisma.refreshToken.delete({ where: { id: t.id } });
+      // Legacy fallback for tokens without jti
+      const tokens = await this.prisma.refreshToken.findMany({
+        where: { userId },
+      });
+      for (const t of tokens) {
+        if (await bcrypt.compare(token, t.token)) {
+          await this.prisma.refreshToken.delete({ where: { id: t.id } });
+        }
       }
+      return { success: true };
+    } catch {
+      // Token signature invalid — still clear on client side
+      return { success: true };
     }
-    return { success: true };
   }
 
   // ---------------------------------------------------------------------------
