@@ -32,7 +32,7 @@ describe('ExportProcessor', () => {
       emit: jest.fn(),
     };
 
-    processor = new ExportProcessor(prisma, eventEmitter);
+    processor = new ExportProcessor(prisma, eventEmitter, { uploadExport: jest.fn() } as any);
   });
 
   it('process updates job status and emits completion', async () => {

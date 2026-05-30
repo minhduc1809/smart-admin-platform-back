@@ -8,6 +8,7 @@ import * as ExcelJS from 'exceljs';
 import * as path from 'path';
 import * as fs from 'fs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { CloudinaryService } from '../cloudinary.service';
 
 interface ExportJobPayload {
   jobId: string;
@@ -23,6 +24,7 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly cloudinaryService: CloudinaryService,
   ) {
     super();
   }
@@ -104,29 +106,50 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
       await job.updateProgress(80);
       this.eventEmitter.emit('job.progress', { jobId, progress: 80, userId });
 
-      // 4. Lưu file
-      const filename = `export-${formId || 'all'}-${Date.now()}.xlsx`;
-      const filepath = path.join('exports', filename);
-      const fullPath = path.join(process.cwd(), filepath);
-      
-      await workbook.xlsx.writeFile(fullPath);
+      // 4. Upload to Cloudinary
+      const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+      // Build meaningful filename: export-{formName}-{timestamp}
+      let formName = 'all';
+      if (formId) {
+        const form = await this.prisma.form.findUnique({ where: { id: formId }, select: { name: true } });
+        if (form) {
+          formName = form.name
+            .toLowerCase()
+            .replace(/[^a-z0-9À-ɏ]/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+            .slice(0, 40);
+        }
+      }
+      const filename = `export-${formName}`;
+
+      let fileUrl: string;
+      try {
+        const uploadResult = await this.cloudinaryService.uploadExport(buffer, filename);
+        fileUrl = uploadResult.url;
+      } catch {
+        const localPath = path.join('exports', `${filename}-${Date.now()}.xlsx`);
+        const fullPath = path.join(process.cwd(), localPath);
+        await workbook.xlsx.writeFile(fullPath);
+        fileUrl = localPath;
+      }
 
       // 5. Hoàn tất job
       await this.prisma.jobRecord.update({
         where: { id: jobId },
-        data: { 
-          status: JobStatus.DONE, 
+        data: {
+          status: JobStatus.DONE,
           progress: 100,
-          result: { filepath },
+          result: { filepath: fileUrl, url: fileUrl },
         },
       });
       await job.updateProgress(100);
       this.eventEmitter.emit('job.progress', { jobId, progress: 100, userId });
 
-      // Phát event real-time (chuẩn bị cho Phase 14)
-      this.eventEmitter.emit('job.completed', { jobId, status: 'DONE', userId, filepath });
+      this.eventEmitter.emit('job.completed', { jobId, status: 'DONE', userId, filepath: fileUrl });
 
-      return { filepath };
+      return { filepath: fileUrl };
     } catch (error: any) {
       const maxAttempts = job.opts.attempts ?? 1;
       const isFinalAttempt = job.attemptsMade >= maxAttempts - 1;
