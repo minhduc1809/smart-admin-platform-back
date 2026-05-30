@@ -17,15 +17,17 @@ export class WorkflowEngine {
     submissionId: string,
     workflowDefinition: { id: string; config: any },
     context: { tenantId: string; submittedBy: string },
+    startState?: string,
   ) {
     const config = workflowDefinition.config as WorkflowConfig;
+    const initialState = startState || config.initialState;
 
     const instance = await tx.workflowInstance.create({
       data: {
         tenantId: context.tenantId,
         definitionId: workflowDefinition.id,
         submissionId,
-        currentStep: config.initialState,
+        currentStep: initialState,
         status: 'ACTIVE',
       },
     });
@@ -35,7 +37,7 @@ export class WorkflowEngine {
         tenantId: context.tenantId,
         instanceId: instance.id,
         fromStep: null,
-        toStep: config.initialState,
+        toStep: initialState,
         action: 'SUBMIT',
         actorId: context.submittedBy,
       },
@@ -51,6 +53,7 @@ export class WorkflowEngine {
     actorId: string,
     actorRole: string,
     comment?: string,
+    delegatedForId?: string,
   ) {
     const instance = await tx.workflowInstance.findUnique({
       where: { id: instanceId },
@@ -65,6 +68,18 @@ export class WorkflowEngine {
       throw new BadRequestException('workflow.INVALID_TRANSITION');
     }
 
+    let effectiveRole = actorRole;
+    if (delegatedForId) {
+      const delegator = await tx.user.findUnique({
+        where: { id: delegatedForId },
+        select: { role: true },
+      });
+      if (!delegator) {
+        throw new NotFoundException('workflow.DELEGATOR_NOT_FOUND');
+      }
+      effectiveRole = delegator.role;
+    }
+
     const config = instance.definition.config as unknown as WorkflowConfig;
     const currentState = instance.currentStep;
 
@@ -73,14 +88,54 @@ export class WorkflowEngine {
       throw new BadRequestException('workflow.INVALID_TRANSITION');
     }
 
-    this.validatePermission(transition, actorRole);
+    this.validatePermission(transition, effectiveRole);
 
     if (transition.conditions?.requireComment && !comment) {
       throw new BadRequestException('workflow.COMMENT_REQUIRED');
     }
 
-    const newState = transition.to;
-    const isNowCompleted = this.isCompleted(config, newState);
+    const isParallel = transition.type === 'PARALLEL_JOIN';
+    let isTransitioning = true;
+    let newState = transition.to;
+
+    if (isParallel && transition.requireActions) {
+      const existingVote = await tx.workflowHistory.findFirst({
+        where: {
+          instanceId,
+          fromStep: currentState,
+          toStep: currentState,
+          action,
+        },
+      });
+      if (existingVote) {
+        throw new BadRequestException('workflow.ACTION_ALREADY_PERFORMED');
+      }
+
+      const pastVotes = await tx.workflowHistory.findMany({
+        where: {
+          instanceId,
+          fromStep: currentState,
+          toStep: currentState,
+        },
+        select: { action: true },
+      });
+
+      const completedActions = new Set(pastVotes.map((v) => v.action));
+      completedActions.add(action);
+
+      const allSatisfied = transition.requireActions.every((req) =>
+        completedActions.has(req),
+      );
+
+      if (!allSatisfied) {
+        isTransitioning = false;
+        newState = currentState;
+      }
+    }
+
+    const isNowCompleted = isTransitioning
+      ? this.isCompleted(config, newState)
+      : false;
 
     await tx.workflowInstance.update({
       where: { id: instanceId },
@@ -99,15 +154,35 @@ export class WorkflowEngine {
         action,
         actorId,
         comment,
+        delegatedForId: delegatedForId || null,
       },
     });
 
-    // Sync submission status
-    const submissionStatus = this.mapToSubmissionStatus(config, newState, transition);
-    await tx.submission.update({
-      where: { id: instance.submissionId },
-      data: { status: submissionStatus },
-    });
+    if (isParallel && isTransitioning) {
+      await tx.workflowHistory.create({
+        data: {
+          tenantId: instance.tenantId,
+          instanceId,
+          fromStep: currentState,
+          toStep: newState,
+          action: 'PARALLEL_JOIN_COMPLETE',
+          actorId: 'SYSTEM',
+          comment: `Parallel approval complete: ${transition.requireActions?.join(', ')}`,
+        },
+      });
+    }
+
+    if (isTransitioning) {
+      const submissionStatus = this.mapToSubmissionStatus(
+        config,
+        newState,
+        transition,
+      );
+      await tx.submission.update({
+        where: { id: instance.submissionId },
+        data: { status: submissionStatus },
+      });
+    }
 
     return {
       instanceId,
@@ -129,7 +204,13 @@ export class WorkflowEngine {
         const fromMatch = Array.isArray(t.from)
           ? t.from.includes(currentState)
           : t.from === currentState || t.from === '*';
-        return fromMatch && t.action === action;
+        if (!fromMatch) return false;
+
+        if (t.type === 'PARALLEL_JOIN' && t.requireActions) {
+          return t.requireActions.includes(action);
+        }
+
+        return t.action === action;
       }) || null
     );
   }
@@ -172,8 +253,10 @@ export class WorkflowEngine {
       return SubmissionStatus.APPROVED;
     }
 
-    if (lower === 'cancel' || lower === 'cancelled') return SubmissionStatus.CANCELLED;
-    if (lower === 'return' || lower === 'returned') return SubmissionStatus.RETURNED;
+    if (lower === 'cancel' || lower === 'cancelled')
+      return SubmissionStatus.CANCELLED;
+    if (lower === 'return' || lower === 'returned')
+      return SubmissionStatus.RETURNED;
 
     return SubmissionStatus.UNDER_REVIEW;
   }

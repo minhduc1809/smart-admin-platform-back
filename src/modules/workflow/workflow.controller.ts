@@ -99,6 +99,7 @@ export class WorkflowController {
   ) {
     return this.actionService.getPendingForUser(
       user.role,
+      user.id,
       page ? parseInt(page, 10) : 1,
       limit ? parseInt(limit, 10) : 20,
     );
@@ -128,6 +129,10 @@ export class WorkflowController {
     @Param('submissionId') submissionId: string,
     @CurrentUser() user: any,
   ) {
-    return this.actionService.getAvailableActions(submissionId, user.role);
+    return this.actionService.getAvailableActions(
+      submissionId,
+      user.role,
+      user.id,
+    );
   }
 }

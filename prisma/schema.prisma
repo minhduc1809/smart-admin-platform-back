@@ -73,6 +73,7 @@ model Tenant {
   workflowInstances   WorkflowInstance[]
   workflowHistories   WorkflowHistory[]
   refreshTokens       RefreshToken[]
+  delegations         Delegation[]
 
   @@map("tenants")
 }
@@ -102,6 +103,9 @@ model User {
   notifications          Notification[]
   jobRecords             JobRecord[]
   fileRecords            FileRecord[]
+  delegatedHistories     WorkflowHistory[]    @relation("DelegatedHistory")
+  delegationsFrom        Delegation[]         @relation("DelegatedFrom")
+  delegationsTo          Delegation[]         @relation("DelegatedTo")
 
   @@map("users")
   @@unique([tenantId, email])
@@ -231,15 +235,18 @@ model WorkflowHistory {
   action     String   // E.g., SUBMITTED, APPROVED, REJECTED
   actorId    String   @map("actor_id")
   comment    String?
+  delegatedForId String?  @map("delegated_for_id")
 
   createdAt  DateTime @default(now()) @map("created_at")
 
   tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   instance   WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  delegatedFor User?          @relation("DelegatedHistory", fields: [delegatedForId], references: [id])
 
   @@map("workflow_histories")
   @@index([tenantId])
   @@index([instanceId])
+  @@index([delegatedForId])
 }
 
 model FileRecord {
@@ -352,4 +359,26 @@ model ApiKey {
 
   @@map("api_keys")
   @@index([tenantId])
+}
+
+model Delegation {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  fromUserId String   @map("from_user_id")
+  toUserId   String   @map("to_user_id")
+  startDate  DateTime @map("start_date")
+  endDate    DateTime @map("end_date")
+  isActive   Boolean  @default(true) @map("is_active")
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  fromUser   User     @relation("DelegatedFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser     User     @relation("DelegatedTo", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@map("delegations")
+  @@index([tenantId])
+  @@index([fromUserId])
+  @@index([toUserId])
 }

@@ -33,4 +33,12 @@ export class ExecuteActionDto {
   @IsObject()
   @IsOptional()
   data?: Record<string, any>;
+
+  @ApiPropertyOptional({
+    description:
+      'Optional ID of the delegator user when executing on their behalf',
+  })
+  @IsUUID()
+  @IsOptional()
+  delegatedForId?: string;
 }

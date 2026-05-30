@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -13,7 +17,10 @@ export class FileService {
   ) {}
 
   async uploadFile(file: Express.Multer.File, userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tenantId: true }});
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { tenantId: true },
+    });
     return this.prisma.fileRecord.create({
       data: {
         tenantId: user!.tenantId,
@@ -28,7 +35,10 @@ export class FileService {
   }
 
   async createExportJob(userId: string, dto: ExportFilterDto) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tenantId: true }});
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { tenantId: true },
+    });
     const jobRecord = await this.prisma.jobRecord.create({
       data: {
         tenantId: user!.tenantId,
@@ -73,9 +83,13 @@ export class FileService {
     }
 
     // Nếu không phải ADMIN/MANAGER, chỉ được tải file do chính mình upload
-    // (Sau này có thể mở rộng logic: nếu file đính kèm với một Submission, 
+    // (Sau này có thể mở rộng logic: nếu file đính kèm với một Submission,
     // người duyệt submission đó cũng được tải)
-    if (role !== Role.ADMIN && role !== Role.MANAGER && fileRecord.uploadedBy !== userId) {
+    if (
+      role !== Role.ADMIN &&
+      role !== Role.MANAGER &&
+      fileRecord.uploadedBy !== userId
+    ) {
       throw new ForbiddenException('error.FORBIDDEN');
     }
 
