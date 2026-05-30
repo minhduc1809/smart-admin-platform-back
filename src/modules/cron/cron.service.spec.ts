@@ -12,9 +12,11 @@ describe('CronService', () => {
   it('cleanupExpiredExports deletes record after removing file', async () => {
     const prisma = {
       jobRecord: {
-        findMany: jest.fn().mockResolvedValue([
-          { id: 'job-1', result: { filepath: 'exports/file-1.xlsx' } },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { id: 'job-1', result: { filepath: 'exports/file-1.xlsx' } },
+          ]),
         delete: jest.fn(),
       },
     };
@@ -22,9 +24,11 @@ describe('CronService', () => {
     fsMock.existsSync.mockReturnValue(true);
     fsMock.unlinkSync.mockImplementation(() => undefined);
 
-    const service = new CronService(prisma as any, {
-      notifyApproversReminder: jest.fn(),
-    } as any);
+    const service = new CronService(
+      prisma as any,
+      { notifyApproversReminder: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+    );
 
     await service.cleanupExpiredExports();
 
@@ -36,9 +40,11 @@ describe('CronService', () => {
   it('cleanupExpiredExports keeps record when file deletion fails', async () => {
     const prisma = {
       jobRecord: {
-        findMany: jest.fn().mockResolvedValue([
-          { id: 'job-1', result: { filepath: 'exports/file-1.xlsx' } },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { id: 'job-1', result: { filepath: 'exports/file-1.xlsx' } },
+          ]),
         delete: jest.fn(),
       },
     };
@@ -48,9 +54,11 @@ describe('CronService', () => {
       throw new Error('delete failed');
     });
 
-    const service = new CronService(prisma as any, {
-      notifyApproversReminder: jest.fn(),
-    } as any);
+    const service = new CronService(
+      prisma as any,
+      { notifyApproversReminder: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+    );
 
     await service.cleanupExpiredExports();
 

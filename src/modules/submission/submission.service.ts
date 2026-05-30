@@ -48,7 +48,10 @@ export class SubmissionService {
       where: { formId: dto.formId },
     });
 
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tenantId: true } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { tenantId: true },
+    });
 
     // 4. Save submission + initiate workflow (in a transaction)
     const submission = await this.prisma.$transaction(async (tx) => {
@@ -182,25 +185,92 @@ export class SubmissionService {
       throw new ForbiddenException('error.FORBIDDEN');
     }
 
-    if (
-      submission.status !== SubmissionStatus.DRAFT &&
-      submission.status !== SubmissionStatus.SUBMITTED &&
-      submission.status !== SubmissionStatus.UNDER_REVIEW
-    ) {
-      throw new ForbiddenException('workflow.NOT_ALLOWED');
+    const activeWorkflow = submission.workflows.find(
+      (w) => w.status === 'ACTIVE',
+    );
+    if (!activeWorkflow) {
+      throw new BadRequestException('workflow.NO_ACTIVE_INSTANCE');
+    }
+
+    const workflowDef = await this.prisma.workflowDefinition.findUnique({
+      where: { id: activeWorkflow.definitionId },
+    });
+    if (!workflowDef) {
+      throw new NotFoundException('workflow.DEFINITION_NOT_FOUND');
+    }
+
+    const config = workflowDef.config as any;
+    if (activeWorkflow.currentStep !== config.initialState) {
+      throw new BadRequestException('workflow.CANNOT_RECALL_IN_PROGRESS');
     }
 
     return this.prisma.$transaction(async (tx) => {
-      for (const wf of submission.workflows) {
-        await tx.workflowInstance.update({
-          where: { id: wf.id },
-          data: { status: 'CANCELLED' },
-        });
-      }
+      await tx.workflowInstance.update({
+        where: { id: activeWorkflow.id },
+        data: { status: 'CANCELLED' },
+      });
+
+      await tx.workflowHistory.create({
+        data: {
+          tenantId: activeWorkflow.tenantId,
+          instanceId: activeWorkflow.id,
+          fromStep: activeWorkflow.currentStep,
+          toStep: 'RECALLED',
+          action: 'RECALL',
+          actorId: userId,
+          comment: 'Submission recalled by submitter',
+        },
+      });
 
       return tx.submission.update({
         where: { id },
         data: { status: SubmissionStatus.DRAFT },
+      });
+    });
+  }
+
+  async withdraw(id: string, userId: string) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { id },
+      include: { workflows: { where: { status: 'ACTIVE' } } },
+    });
+
+    if (!submission) {
+      throw new NotFoundException('submission.NOT_FOUND');
+    }
+
+    if (submission.submittedBy !== userId) {
+      throw new ForbiddenException('error.FORBIDDEN');
+    }
+
+    const activeWorkflow = submission.workflows.find(
+      (w) => w.status === 'ACTIVE',
+    );
+    if (!activeWorkflow) {
+      throw new BadRequestException('workflow.NO_ACTIVE_INSTANCE');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.workflowInstance.update({
+        where: { id: activeWorkflow.id },
+        data: { status: 'CANCELLED' },
+      });
+
+      await tx.workflowHistory.create({
+        data: {
+          tenantId: activeWorkflow.tenantId,
+          instanceId: activeWorkflow.id,
+          fromStep: activeWorkflow.currentStep,
+          toStep: 'CANCELLED',
+          action: 'WITHDRAW',
+          actorId: userId,
+          comment: 'Submission withdrawn by submitter',
+        },
+      });
+
+      return tx.submission.update({
+        where: { id },
+        data: { status: SubmissionStatus.CANCELLED },
       });
     });
   }
@@ -227,8 +297,6 @@ export class SubmissionService {
     }
 
     const resubmittableStatuses: SubmissionStatus[] = [
-      SubmissionStatus.REJECTED,
-      SubmissionStatus.CANCELLED,
       SubmissionStatus.RETURNED,
     ];
     if (!resubmittableStatuses.includes(original.status)) {
@@ -252,6 +320,32 @@ export class SubmissionService {
       where: { formId: original.formId },
     });
 
+    const config = workflow?.config as any;
+    let startState = config?.initialState;
+
+    if (config?.resubmitTargetState) {
+      startState = config.resubmitTargetState;
+    } else if (config?.resubmitFastTrack) {
+      const originalInstances = await this.prisma.workflowInstance.findMany({
+        where: { submissionId: originalSubmissionId },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      });
+      const lastInstance = originalInstances[0];
+      if (lastInstance) {
+        const lastHistory = await this.prisma.workflowHistory.findFirst({
+          where: {
+            instanceId: lastInstance.id,
+            toStep: lastInstance.currentStep,
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (lastHistory && lastHistory.fromStep) {
+          startState = lastHistory.fromStep;
+        }
+      }
+    }
+
     const submission = await this.prisma.$transaction(async (tx) => {
       // Complete any active workflow instances on the original (returned_for_edit case)
       for (const wf of original.workflows) {
@@ -261,7 +355,10 @@ export class SubmissionService {
         });
       }
 
-      const user = await tx.user.findUnique({ where: { id: userId }, select: { tenantId: true } });
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { tenantId: true },
+      });
 
       const sub = await tx.submission.create({
         data: {
@@ -278,10 +375,16 @@ export class SubmissionService {
       });
 
       if (workflow) {
-        await this.workflowEngine.initiate(tx, sub.id, workflow, {
-          tenantId: user!.tenantId,
-          submittedBy: userId,
-        });
+        await this.workflowEngine.initiate(
+          tx,
+          sub.id,
+          workflow,
+          {
+            tenantId: user!.tenantId,
+            submittedBy: userId,
+          },
+          startState,
+        );
       }
 
       return sub;

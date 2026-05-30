@@ -11,6 +11,13 @@ export interface WorkflowTransition {
   roles?: string[];
   conditions?: WorkflowTransitionCondition;
   submissionStatus?: SubmissionStatus;
+  type?: 'PARALLEL_JOIN';
+  requireActions?: string[];
+}
+
+export interface WorkflowStateDetails {
+  slaHours?: number;
+  timeoutAction?: string;
 }
 
 export interface WorkflowConfig {
@@ -19,4 +26,7 @@ export interface WorkflowConfig {
   finalStates: string[];
   transitions: WorkflowTransition[];
   statusMapping?: Record<string, SubmissionStatus>;
+  resubmitTargetState?: string;
+  resubmitFastTrack?: boolean;
+  statesDetails?: Record<string, WorkflowStateDetails>;
 }
