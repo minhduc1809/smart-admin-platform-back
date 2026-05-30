@@ -17,6 +17,9 @@ describe('FileService', () => {
         create: jest.fn(),
         findUnique: jest.fn(),
       },
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ tenantId: 'tenant-1' }),
+      },
     };
 
     queue = {
@@ -37,6 +40,7 @@ describe('FileService', () => {
 
     expect(prisma.jobRecord.create).toHaveBeenCalledWith({
       data: {
+        tenantId: 'tenant-1',
         type: JobType.EXPORT,
         status: JobStatus.PENDING,
         progress: 0,

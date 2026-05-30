@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Inject,
   forwardRef,
 } from '@nestjs/common';
@@ -27,6 +28,22 @@ export class WorkflowActionService {
       return this.handleResubmit(actorId, actorRole, dto);
     }
 
+    if (dto.delegatedForId) {
+      const now = new Date();
+      const activeDelegation = await this.prisma.delegation.findFirst({
+        where: {
+          fromUserId: dto.delegatedForId,
+          toUserId: actorId,
+          isActive: true,
+          startDate: { lte: now },
+          endDate: { gte: now },
+        },
+      });
+      if (!activeDelegation) {
+        throw new ForbiddenException('workflow.INVALID_DELEGATION');
+      }
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
       const instance = await tx.workflowInstance.findFirst({
         where: {
@@ -46,6 +63,7 @@ export class WorkflowActionService {
         actorId,
         actorRole,
         dto.comment,
+        dto.delegatedForId,
       );
     });
 
@@ -56,6 +74,7 @@ export class WorkflowActionService {
       toState: result.currentState,
       action: dto.action,
       actorId,
+      delegatedForId: dto.delegatedForId,
     });
 
     if (result.isCompleted) {
@@ -94,8 +113,8 @@ export class WorkflowActionService {
       throw new BadRequestException('workflow.INSTANCE_NOT_FOUND');
     }
 
-    const config =
-      latestInstance.definition.config as unknown as WorkflowConfig;
+    const config = latestInstance.definition
+      .config as unknown as WorkflowConfig;
     const currentState = latestInstance.currentStep;
 
     const transition = this.workflowEngine.findTransition(
@@ -160,12 +179,40 @@ export class WorkflowActionService {
       throw new NotFoundException('workflow.INSTANCE_NOT_FOUND');
     }
 
+    const actorIds = [...new Set(instance.histories.map((h) => h.actorId))];
+    const actors = await this.prisma.user.findMany({
+      where: { id: { in: actorIds } },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
+    const actorMap = new Map(actors.map((a) => [a.id, a]));
+
     return {
       instanceId: instance.id,
       currentStep: instance.currentStep,
       status: instance.status,
       workflowName: instance.definition.name,
-      history: instance.histories,
+      history: instance.histories.map((h) => {
+        const actor = actorMap.get(h.actorId);
+        return {
+          ...h,
+          actor: actor
+            ? {
+                id: actor.id,
+                email: actor.email,
+                name:
+                  actor.username ||
+                  `${actor.firstName ?? ''} ${actor.lastName ?? ''}`.trim() ||
+                  actor.email,
+              }
+            : null,
+        };
+      }),
     };
   }
 
@@ -214,6 +261,23 @@ export class WorkflowActionService {
       orderBy: { createdAt: 'asc' },
     });
 
+    const allActorIds = [
+      ...new Set(
+        instances.flatMap((inst) => inst.histories.map((h) => h.actorId)),
+      ),
+    ];
+    const allActors = await this.prisma.user.findMany({
+      where: { id: { in: allActorIds } },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
+    const actorMap = new Map(allActors.map((a) => [a.id, a]));
+
     return {
       revisionChain: chain,
       revisions: instances.map((inst) => ({
@@ -223,12 +287,31 @@ export class WorkflowActionService {
         currentStep: inst.currentStep,
         status: inst.status,
         workflowName: inst.definition.name,
-        history: inst.histories,
+        history: inst.histories.map((h) => {
+          const actor = actorMap.get(h.actorId);
+          return {
+            ...h,
+            actor: actor
+              ? {
+                  id: actor.id,
+                  email: actor.email,
+                  name:
+                    actor.username ||
+                    `${actor.firstName ?? ''} ${actor.lastName ?? ''}`.trim() ||
+                    actor.email,
+                }
+              : null,
+          };
+        }),
       })),
     };
   }
 
-  async getAvailableActions(submissionId: string, userRole: string) {
+  async getAvailableActions(
+    submissionId: string,
+    userRole: string,
+    userId?: string,
+  ) {
     let instance = await this.prisma.workflowInstance.findFirst({
       where: {
         submissionId,
@@ -256,20 +339,68 @@ export class WorkflowActionService {
     const config = instance.definition.config as unknown as WorkflowConfig;
     const currentState = instance.currentStep;
 
-    const availableActions = config.transitions
-      .filter((t) => {
-        const fromMatch = Array.isArray(t.from)
-          ? t.from.includes(currentState)
-          : t.from === currentState || t.from === '*';
-        const roleMatch =
-          t.roles && t.roles.length > 0 && t.roles.includes(userRole);
-        return fromMatch && roleMatch;
-      })
-      .map((t) => ({
-        action: t.action,
-        targetState: t.to,
-        requiresComment: t.conditions?.requireComment || false,
-      }));
+    const roles = new Set<string>([userRole]);
+    if (userId) {
+      const now = new Date();
+      const activeDelegations = await this.prisma.delegation.findMany({
+        where: {
+          toUserId: userId,
+          isActive: true,
+          startDate: { lte: now },
+          endDate: { gte: now },
+        },
+        include: { fromUser: true },
+      });
+      for (const del of activeDelegations) {
+        roles.add(del.fromUser.role);
+      }
+    }
+
+    const performedVotes = await this.prisma.workflowHistory.findMany({
+      where: {
+        instanceId: instance.id,
+        fromStep: currentState,
+        toStep: currentState,
+      },
+      select: { action: true },
+    });
+    const performedActions = new Set(performedVotes.map((v) => v.action));
+
+    const availableActions: Array<{
+      action: string;
+      targetState: string;
+      requiresComment: boolean;
+      isParallel: boolean;
+    }> = [];
+    for (const t of config.transitions) {
+      const fromMatch = Array.isArray(t.from)
+        ? t.from.includes(currentState)
+        : t.from === currentState || t.from === '*';
+      const roleMatch =
+        t.roles && t.roles.length > 0 && t.roles.some((r) => roles.has(r));
+
+      if (fromMatch && roleMatch) {
+        if (t.type === 'PARALLEL_JOIN' && t.requireActions) {
+          for (const act of t.requireActions) {
+            if (!performedActions.has(act)) {
+              availableActions.push({
+                action: act,
+                targetState: t.to,
+                requiresComment: t.conditions?.requireComment || false,
+                isParallel: true,
+              });
+            }
+          }
+        } else {
+          availableActions.push({
+            action: t.action,
+            targetState: t.to,
+            requiresComment: t.conditions?.requireComment || false,
+            isParallel: false,
+          });
+        }
+      }
+    }
 
     return {
       currentState,
@@ -279,10 +410,26 @@ export class WorkflowActionService {
 
   async getPendingForUser(
     userRole: string,
+    userId: string,
     page: number = 1,
     limit: number = 20,
   ) {
     const skip = (page - 1) * limit;
+
+    const roles = new Set<string>([userRole]);
+    const now = new Date();
+    const activeDelegations = await this.prisma.delegation.findMany({
+      where: {
+        toUserId: userId,
+        isActive: true,
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
+      include: { fromUser: true },
+    });
+    for (const del of activeDelegations) {
+      roles.add(del.fromUser.role);
+    }
 
     // Pass 1: fetch all active instance IDs with their config (lightweight)
     const allActive = await this.prisma.workflowInstance.findMany({
@@ -303,52 +450,50 @@ export class WorkflowActionService {
             ? t.from.includes(inst.currentStep)
             : t.from === inst.currentStep || t.from === '*';
           const roleMatch =
-            !t.roles || t.roles.length === 0 || t.roles.includes(userRole);
+            !t.roles ||
+            t.roles.length === 0 ||
+            t.roles.some((r) => roles.has(r));
           return fromMatch && roleMatch;
         });
       })
       .map((inst) => inst.id);
 
     const total = matchingIds.length;
+    const paginatedIds = matchingIds.slice(skip, skip + limit);
 
-    // Pass 2: paginate over the filtered IDs with full includes
+    // Pass 2: fetch paginated IDs with full includes
     const instances = await this.prisma.workflowInstance.findMany({
-      where: { id: { in: matchingIds } },
+      where: { id: { in: paginatedIds } },
       include: {
         submission: {
           include: {
-            form: { select: { name: true } },
+            form: { select: { name: true, schema: true } },
             user: { select: { email: true, username: true } },
           },
         },
         definition: true,
       },
       orderBy: { createdAt: 'desc' },
-      skip,
-      take: limit,
-    });
-
-    const pending = instances.filter((inst) => {
-      const config = inst.definition.config as unknown as WorkflowConfig;
-      const currentState = inst.currentStep;
-      return config.transitions.some((t) => {
-        const fromMatch = Array.isArray(t.from)
-          ? t.from.includes(currentState)
-          : t.from === currentState || t.from === '*';
-        const roleMatch =
-          t.roles && t.roles.length > 0 && t.roles.includes(userRole);
-        return fromMatch && roleMatch;
-      });
     });
 
     return {
       items: instances.map((inst) => ({
-        instanceId: inst.id,
+        id: inst.id,
         submissionId: inst.submissionId,
         currentStep: inst.currentStep,
-        formName: inst.submission.form.name,
-        submittedBy: inst.submission.user.email,
+        status: inst.status,
         createdAt: inst.createdAt,
+        updatedAt: inst.updatedAt,
+        definitionId: inst.definitionId,
+        submission: {
+          id: inst.submission.id,
+          data: inst.submission.data,
+          status: inst.submission.status,
+          submittedBy: inst.submission.submittedBy,
+          createdAt: inst.submission.createdAt,
+          form: inst.submission.form,
+          user: inst.submission.user,
+        },
       })),
       meta: {
         total,

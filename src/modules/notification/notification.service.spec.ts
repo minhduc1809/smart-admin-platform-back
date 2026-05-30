@@ -23,6 +23,7 @@ describe('NotificationService', () => {
       },
       user: {
         findMany: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue({ tenantId: 'tenant-1' }),
       },
     };
 
@@ -40,9 +41,9 @@ describe('NotificationService', () => {
   it('markAsRead throws when notification not found', async () => {
     prisma.notification.findFirst.mockResolvedValue(null);
 
-    await expect(service.markAsRead('user-1', 'notif-1')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.markAsRead('user-1', 'notif-1'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('notifyWorkflowStateChanged skips self notifications', async () => {

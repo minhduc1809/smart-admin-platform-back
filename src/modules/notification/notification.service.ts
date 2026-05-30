@@ -13,7 +13,7 @@ export class NotificationService {
   private async createAndEmit(args: Prisma.NotificationCreateArgs) {
     if (!args.data.tenantId && args.data.userId) {
       const user = await this.prisma.user.findUnique({
-        where: { id: args.data.userId as string },
+        where: { id: args.data.userId },
         select: { tenantId: true },
       });
       if (user) {

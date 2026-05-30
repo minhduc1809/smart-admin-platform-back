@@ -23,6 +23,23 @@ export class DashboardService {
     return { total, pending, approved, rejected };
   }
 
+  async getMySummary(userId: string) {
+    const [total, pending, approved, rejected] = await this.prisma.$transaction([
+      this.prisma.submission.count({ where: { submittedBy: userId } }),
+      this.prisma.submission.count({
+        where: { submittedBy: userId, status: SubmissionStatus.UNDER_REVIEW },
+      }),
+      this.prisma.submission.count({
+        where: { submittedBy: userId, status: SubmissionStatus.APPROVED },
+      }),
+      this.prisma.submission.count({
+        where: { submittedBy: userId, status: SubmissionStatus.REJECTED },
+      }),
+    ]);
+
+    return { total, pending, approved, rejected };
+  }
+
   async getSubmissionsByStatus() {
     const groups = await this.prisma.submission.groupBy({
       by: ['status'],

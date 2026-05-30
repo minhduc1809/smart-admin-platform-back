@@ -28,10 +28,7 @@ export class SubmissionController {
 
   @Post()
   @ApiOperation({ summary: 'Submit a new form' })
-  create(
-    @CurrentUser('id') userId: string,
-    @Body() dto: CreateSubmissionDto,
-  ) {
+  create(@CurrentUser('id') userId: string, @Body() dto: CreateSubmissionDto) {
     return this.submissionService.create(userId, dto);
   }
 
@@ -53,24 +50,27 @@ export class SubmissionController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get submission details' })
-  findOne(
-    @Param('id') id: string,
-    @CurrentUser() user: any,
-  ) {
+  findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.submissionService.findOne(id, user.id, user.role);
   }
 
   @Patch(':id/recall')
   @ApiOperation({ summary: 'Recall a submission to DRAFT status' })
-  recall(
-    @Param('id') id: string,
-    @CurrentUser('id') userId: string,
-  ) {
+  recall(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.submissionService.recall(id, userId);
   }
 
+  @Patch(':id/withdraw')
+  @ApiOperation({ summary: 'Withdraw a submission to CANCELLED status' })
+  withdraw(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.submissionService.withdraw(id, userId);
+  }
+
   @Post(':id/resubmit')
-  @ApiOperation({ summary: 'Resubmit a rejected/cancelled/returned submission as a new revision' })
+  @ApiOperation({
+    summary:
+      'Resubmit a rejected/cancelled/returned submission as a new revision',
+  })
   resubmit(
     @Param('id') id: string,
     @CurrentUser('id') userId: string,
@@ -81,10 +81,7 @@ export class SubmissionController {
 
   @Get(':id/revisions')
   @ApiOperation({ summary: 'Get all revisions of a submission' })
-  getRevisions(
-    @Param('id') id: string,
-    @CurrentUser() user: any,
-  ) {
+  getRevisions(@Param('id') id: string, @CurrentUser() user: any) {
     return this.submissionService.getRevisions(id, user.id, user.role);
   }
 }

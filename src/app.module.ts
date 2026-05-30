@@ -1,7 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { AcceptLanguageResolver, HeaderResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
+import {
+  AcceptLanguageResolver,
+  HeaderResolver,
+  I18nModule,
+  QueryResolver,
+} from 'nestjs-i18n';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import * as path from 'path';
@@ -26,6 +31,7 @@ import { CronModule } from './modules/cron/cron.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { ApiKeyModule } from './modules/api-key/api-key.module';
+import { DelegationModule } from './modules/delegation/delegation.module';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
 
@@ -82,6 +88,7 @@ import { ClsModule } from 'nestjs-cls';
     RealtimeModule,
     AuditLogModule,
     ApiKeyModule,
+    DelegationModule,
   ],
   controllers: [AppController],
   providers: [
@@ -104,4 +111,4 @@ import { ClsModule } from 'nestjs-cls';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

@@ -21,6 +21,6 @@ import { NotificationModule } from '../notification/notification.module';
     WorkflowActionService,
     WorkflowEventListener,
   ],
-  exports: [WorkflowEngine],
+  exports: [WorkflowEngine, WorkflowActionService],
 })
 export class WorkflowModule {}
