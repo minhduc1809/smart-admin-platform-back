@@ -5,6 +5,7 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { FileController } from './file.controller';
 import { FileService } from './file.service';
+import { CloudinaryService } from './cloudinary.service';
 import { ExportProcessor } from './processors/export.processor';
 import * as fs from 'fs';
 
@@ -48,10 +49,14 @@ import * as fs from 'fs';
     // Configure BullMQ Queue
     BullModule.registerQueue({
       name: 'export-queue',
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+      },
     }),
   ],
   controllers: [FileController],
-  providers: [FileService, ExportProcessor],
-  exports: [FileService],
+  providers: [FileService, CloudinaryService, ExportProcessor],
+  exports: [FileService, CloudinaryService],
 })
 export class FileModule {}

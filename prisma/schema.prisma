@@ -117,12 +117,14 @@ model User {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
-  tenantId  String   @map("tenant_id")
-  token     String   @unique
-  userId    String   @map("user_id")
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  token       String   @unique
+  userId      String   @map("user_id")
+  tokenFamily String   @default(uuid()) @map("token_family")
+  isRevoked   Boolean  @default(false) @map("is_revoked")
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -130,6 +132,7 @@ model RefreshToken {
   @@map("refresh_tokens")
   @@index([tenantId])
   @@index([userId])
+  @@index([tokenFamily])
 }
 
 model Form {
@@ -362,13 +365,15 @@ model ApiKey {
 }
 
 model Delegation {
-  id         String   @id @default(uuid())
-  tenantId   String   @map("tenant_id")
-  fromUserId String   @map("from_user_id")
-  toUserId   String   @map("to_user_id")
-  startDate  DateTime @map("start_date")
-  endDate    DateTime @map("end_date")
-  isActive   Boolean  @default(true) @map("is_active")
+  id                    String   @id @default(uuid())
+  tenantId              String   @map("tenant_id")
+  fromUserId            String   @map("from_user_id")
+  toUserId              String   @map("to_user_id")
+  startDate             DateTime @map("start_date")
+  endDate               DateTime @map("end_date")
+  isActive              Boolean  @default(true) @map("is_active")
+  formIds               String[] @default([]) @map("form_ids")
+  workflowDefinitionIds String[] @default([]) @map("workflow_definition_ids")
 
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")

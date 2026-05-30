@@ -4,6 +4,15 @@ export interface WorkflowTransitionCondition {
   requireComment?: boolean;
 }
 
+export interface VotingConfig {
+  approveAction: string;
+  rejectAction: string;
+  approveThreshold: number;
+  rejectThreshold?: number;
+  approveTarget: string;
+  rejectTarget: string;
+}
+
 export interface WorkflowTransition {
   from: string | string[];
   to: string;
@@ -11,8 +20,9 @@ export interface WorkflowTransition {
   roles?: string[];
   conditions?: WorkflowTransitionCondition;
   submissionStatus?: SubmissionStatus;
-  type?: 'PARALLEL_JOIN';
+  type?: 'PARALLEL_JOIN' | 'VOTING';
   requireActions?: string[];
+  votingConfig?: VotingConfig;
 }
 
 export interface WorkflowStateDetails {

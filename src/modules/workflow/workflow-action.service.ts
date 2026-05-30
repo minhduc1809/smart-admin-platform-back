@@ -42,6 +42,28 @@ export class WorkflowActionService {
       if (!activeDelegation) {
         throw new ForbiddenException('workflow.INVALID_DELEGATION');
       }
+
+      // Check delegation scope: form restriction
+      if (activeDelegation.formIds.length > 0) {
+        const submission = await this.prisma.submission.findUnique({
+          where: { id: dto.submissionId },
+          select: { formId: true },
+        });
+        if (!submission || !activeDelegation.formIds.includes(submission.formId)) {
+          throw new ForbiddenException('workflow.DELEGATION_SCOPE_FORM');
+        }
+      }
+
+      // Check delegation scope: workflow definition restriction
+      if (activeDelegation.workflowDefinitionIds.length > 0) {
+        const instance = await this.prisma.workflowInstance.findFirst({
+          where: { submissionId: dto.submissionId, status: 'ACTIVE' },
+          select: { definitionId: true },
+        });
+        if (!instance || !activeDelegation.workflowDefinitionIds.includes(instance.definitionId)) {
+          throw new ForbiddenException('workflow.DELEGATION_SCOPE_WORKFLOW');
+        }
+      }
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -351,7 +373,21 @@ export class WorkflowActionService {
         },
         include: { fromUser: true },
       });
+
+      const submission = await this.prisma.submission.findUnique({
+        where: { id: submissionId },
+        select: { formId: true },
+      });
+
       for (const del of activeDelegations) {
+        // Skip delegation if scoped to specific forms and this form is not included
+        if (del.formIds.length > 0 && submission && !del.formIds.includes(submission.formId)) {
+          continue;
+        }
+        // Skip delegation if scoped to specific workflows and this definition is not included
+        if (del.workflowDefinitionIds.length > 0 && instance && !del.workflowDefinitionIds.includes(instance.definitionId)) {
+          continue;
+        }
         roles.add(del.fromUser.role);
       }
     }
@@ -362,7 +398,7 @@ export class WorkflowActionService {
         fromStep: currentState,
         toStep: currentState,
       },
-      select: { action: true },
+      select: { action: true, actorId: true },
     });
     const performedActions = new Set(performedVotes.map((v) => v.action));
 
@@ -390,6 +426,29 @@ export class WorkflowActionService {
                 isParallel: true,
               });
             }
+          }
+        } else if (t.type === 'VOTING' && t.votingConfig) {
+          const vc = t.votingConfig;
+          const userAlreadyVoted = userId
+            ? performedVotes.some(
+                (v) =>
+                  v.actorId === userId &&
+                  (v.action === vc.approveAction || v.action === vc.rejectAction),
+              )
+            : false;
+          if (!userAlreadyVoted) {
+            availableActions.push({
+              action: vc.approveAction,
+              targetState: vc.approveTarget,
+              requiresComment: t.conditions?.requireComment || false,
+              isParallel: false,
+            });
+            availableActions.push({
+              action: vc.rejectAction,
+              targetState: vc.rejectTarget,
+              requiresComment: t.conditions?.requireComment || false,
+              isParallel: false,
+            });
           }
         } else {
           availableActions.push({
@@ -427,9 +486,17 @@ export class WorkflowActionService {
       },
       include: { fromUser: true },
     });
-    for (const del of activeDelegations) {
+
+    // Collect roles from unscoped delegations (scoped ones are checked per-instance below)
+    const unscopedDelegations = activeDelegations.filter(
+      (d) => d.formIds.length === 0 && d.workflowDefinitionIds.length === 0,
+    );
+    for (const del of unscopedDelegations) {
       roles.add(del.fromUser.role);
     }
+    const scopedDelegations = activeDelegations.filter(
+      (d) => d.formIds.length > 0 || d.workflowDefinitionIds.length > 0,
+    );
 
     // Pass 1: fetch all active instance IDs with their config (lightweight)
     const allActive = await this.prisma.workflowInstance.findMany({
@@ -437,7 +504,10 @@ export class WorkflowActionService {
       select: {
         id: true,
         currentStep: true,
+        definitionId: true,
+        submissionId: true,
         definition: { select: { config: true } },
+        submission: { select: { formId: true } },
       },
     });
 
@@ -445,6 +515,17 @@ export class WorkflowActionService {
     const matchingIds = allActive
       .filter((inst) => {
         const config = inst.definition.config as unknown as WorkflowConfig;
+
+        // Build effective roles for this specific instance (base roles + scoped delegation roles)
+        const effectiveRoles = new Set(roles);
+        for (const del of scopedDelegations) {
+          const formOk = del.formIds.length === 0 || del.formIds.includes(inst.submission.formId);
+          const wfOk = del.workflowDefinitionIds.length === 0 || del.workflowDefinitionIds.includes(inst.definitionId);
+          if (formOk && wfOk) {
+            effectiveRoles.add(del.fromUser.role);
+          }
+        }
+
         return config.transitions.some((t) => {
           const fromMatch = Array.isArray(t.from)
             ? t.from.includes(inst.currentStep)
@@ -452,7 +533,7 @@ export class WorkflowActionService {
           const roleMatch =
             !t.roles ||
             t.roles.length === 0 ||
-            t.roles.some((r) => roles.has(r));
+            t.roles.some((r) => effectiveRoles.has(r));
           return fromMatch && roleMatch;
         });
       })

@@ -88,12 +88,14 @@ export class AuthService {
       },
     );
 
+    const tokenFamily = randomUUID();
     await this.prisma.refreshToken.create({
       data: {
         id: jti,
         token: await bcrypt.hash(refreshToken, 10),
         userId: user.id,
         tenantId: user.tenantId,
+        tokenFamily,
         expiresAt: new Date(Date.now() + ms(refreshExpiration)),
       },
     });
@@ -170,8 +172,19 @@ export class AuthService {
       if (!validRecord)
         throw new UnauthorizedException('error.INVALID_REFRESH_TOKEN');
 
-      // Delete the old refresh token
-      await this.prisma.refreshToken.delete({ where: { id: validRecord.id } });
+      // Token reuse detection: if already revoked, compromise detected
+      if (validRecord.isRevoked) {
+        await this.prisma.refreshToken.deleteMany({
+          where: { tokenFamily: validRecord.tokenFamily },
+        });
+        throw new UnauthorizedException('error.TOKEN_REUSE_DETECTED');
+      }
+
+      // Mark old token as revoked (keep for reuse detection)
+      await this.prisma.refreshToken.update({
+        where: { id: validRecord.id },
+        data: { isRevoked: true },
+      });
 
       const jwtPayload: JwtPayload = {
         sub: payload.sub,
@@ -185,7 +198,7 @@ export class AuthService {
         expiresIn: (process.env.JWT_ACCESS_EXPIRATION ?? '15m') as StringValue,
       });
 
-      // Rotate: issue a new refresh token
+      // Rotate: issue a new refresh token in the same family
       const newJti = randomUUID();
       const refreshExpiration = (process.env.JWT_REFRESH_EXPIRATION ?? '7d') as StringValue;
       const newRefreshToken = this.jwtService.sign(
@@ -202,6 +215,7 @@ export class AuthService {
           token: await bcrypt.hash(newRefreshToken, 10),
           userId: payload.sub,
           tenantId: payload.tenantId,
+          tokenFamily: validRecord.tokenFamily,
           expiresAt: new Date(Date.now() + ms(refreshExpiration)),
         },
       });
@@ -225,7 +239,10 @@ export class AuthService {
           where: { id: payload.jti },
         });
         if (t && (await bcrypt.compare(token, t.token))) {
-          await this.prisma.refreshToken.delete({ where: { id: t.id } });
+          // Revoke entire token family
+          await this.prisma.refreshToken.deleteMany({
+            where: { tokenFamily: t.tokenFamily },
+          });
         }
         return { success: true };
       }
@@ -236,12 +253,14 @@ export class AuthService {
       });
       for (const t of tokens) {
         if (await bcrypt.compare(token, t.token)) {
-          await this.prisma.refreshToken.delete({ where: { id: t.id } });
+          await this.prisma.refreshToken.deleteMany({
+            where: { tokenFamily: t.tokenFamily },
+          });
+          break;
         }
       }
       return { success: true };
     } catch {
-      // Token signature invalid — still clear on client side
       return { success: true };
     }
   }
