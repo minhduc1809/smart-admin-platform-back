@@ -57,7 +57,7 @@ export class FileController {
     file: Express.Multer.File,
     @CurrentUser() user: any,
   ) {
-    const result = await this.cloudinaryService.uploadImage(file, 'avatars');
+    const result = await this.cloudinaryService.uploadAvatar(file, user.id);
     await this.fileService.updateUserAvatar(user.id, result.url);
     return { url: result.url, publicId: result.publicId };
   }
