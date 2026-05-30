@@ -128,20 +128,32 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
 
       return { filepath };
     } catch (error: any) {
-      // Xử lý lỗi an toàn
-      await this.prisma.jobRecord.update({
-        where: { id: jobId },
-        data: { 
-          status: JobStatus.FAILED, 
-          error: error.message || 'Unknown Error',
-        },
-      });
-      this.eventEmitter.emit('job.completed', {
-        jobId,
-        status: 'FAILED',
-        userId,
-        error: error.message || 'Unknown Error',
-      });
+      const maxAttempts = job.opts.attempts ?? 1;
+      const isFinalAttempt = job.attemptsMade >= maxAttempts - 1;
+      const errorMessage = error.message || 'Unknown Error';
+
+      if (isFinalAttempt) {
+        await this.prisma.jobRecord.update({
+          where: { id: jobId },
+          data: {
+            status: JobStatus.FAILED,
+            error: errorMessage,
+          },
+        });
+        this.eventEmitter.emit('job.completed', {
+          jobId,
+          status: 'FAILED',
+          userId,
+          error: errorMessage,
+        });
+      } else {
+        await this.prisma.jobRecord.update({
+          where: { id: jobId },
+          data: {
+            error: `Attempt ${job.attemptsMade + 1}/${maxAttempts} failed: ${errorMessage}`,
+          },
+        });
+      }
       throw error;
     }
   }

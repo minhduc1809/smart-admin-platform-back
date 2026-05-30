@@ -16,7 +16,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { FileService } from './file.service';
+import { CloudinaryService } from './cloudinary.service';
 import { ExportFilterDto } from './dto/export-filter.dto';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -33,7 +35,32 @@ import { join } from 'path';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('files')
 export class FileController {
-  constructor(private readonly fileService: FileService) {}
+  constructor(
+    private readonly fileService: FileService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  @Post('avatar')
+  @ApiOperation({ summary: 'Upload avatar to Cloudinary (max 5MB, image only)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }))
+  async uploadAvatar(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: 'image' }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+    @CurrentUser() user: any,
+  ) {
+    const result = await this.cloudinaryService.uploadImage(file, 'avatars');
+    await this.fileService.updateUserAvatar(user.id, result.url);
+    return { url: result.url, publicId: result.publicId };
+  }
 
   @Post('upload')
   @ApiOperation({ summary: 'Upload a file (max 10MB)' })
@@ -54,8 +81,7 @@ export class FileController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB
-          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|pdf|doc|docx)' }),
+          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }),
         ],
       }),
     )
@@ -83,6 +109,16 @@ export class FileController {
   @ApiOperation({ summary: 'Kiểm tra tiến độ export job' })
   async getExportStatus(@Param('jobId') jobId: string) {
     return this.fileService.getJobStatus(jobId);
+  }
+
+  @Post('export/:jobId/retry')
+  @Roles(Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Retry a failed export job' })
+  async retryExportJob(
+    @Param('jobId') jobId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.fileService.retryExportJob(jobId, user.id, user.role);
   }
 
   @Get('export/:jobId/download')

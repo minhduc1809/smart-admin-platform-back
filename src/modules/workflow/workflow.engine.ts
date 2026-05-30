@@ -95,6 +95,7 @@ export class WorkflowEngine {
     }
 
     const isParallel = transition.type === 'PARALLEL_JOIN';
+    const isVoting = transition.type === 'VOTING';
     let isTransitioning = true;
     let newState = transition.to;
 
@@ -128,6 +129,51 @@ export class WorkflowEngine {
       );
 
       if (!allSatisfied) {
+        isTransitioning = false;
+        newState = currentState;
+      }
+    } else if (isVoting && transition.votingConfig) {
+      const vc = transition.votingConfig;
+
+      // Check duplicate vote by same actor
+      const existingVote = await tx.workflowHistory.findFirst({
+        where: {
+          instanceId,
+          fromStep: currentState,
+          toStep: currentState,
+          actorId,
+          action: { in: [vc.approveAction, vc.rejectAction] },
+        },
+      });
+      if (existingVote) {
+        throw new BadRequestException('workflow.ALREADY_VOTED');
+      }
+
+      // Count existing votes
+      const pastVotes = await tx.workflowHistory.findMany({
+        where: {
+          instanceId,
+          fromStep: currentState,
+          toStep: currentState,
+          action: { in: [vc.approveAction, vc.rejectAction] },
+        },
+        select: { action: true },
+      });
+
+      const approveCount =
+        pastVotes.filter((v) => v.action === vc.approveAction).length +
+        (action === vc.approveAction ? 1 : 0);
+      const rejectCount =
+        pastVotes.filter((v) => v.action === vc.rejectAction).length +
+        (action === vc.rejectAction ? 1 : 0);
+
+      if (approveCount >= vc.approveThreshold) {
+        newState = vc.approveTarget;
+        isTransitioning = true;
+      } else if (vc.rejectThreshold && rejectCount >= vc.rejectThreshold) {
+        newState = vc.rejectTarget;
+        isTransitioning = true;
+      } else {
         isTransitioning = false;
         newState = currentState;
       }
@@ -172,6 +218,20 @@ export class WorkflowEngine {
       });
     }
 
+    if (isVoting && isTransitioning && transition.votingConfig) {
+      await tx.workflowHistory.create({
+        data: {
+          tenantId: instance.tenantId,
+          instanceId,
+          fromStep: currentState,
+          toStep: newState,
+          action: 'VOTING_COMPLETE',
+          actorId: 'SYSTEM',
+          comment: `Voting concluded. Threshold: ${transition.votingConfig.approveThreshold} approvals needed.`,
+        },
+      });
+    }
+
     if (isTransitioning) {
       const submissionStatus = this.mapToSubmissionStatus(
         config,
@@ -208,6 +268,13 @@ export class WorkflowEngine {
 
         if (t.type === 'PARALLEL_JOIN' && t.requireActions) {
           return t.requireActions.includes(action);
+        }
+
+        if (t.type === 'VOTING' && t.votingConfig) {
+          return (
+            action === t.votingConfig.approveAction ||
+            action === t.votingConfig.rejectAction
+          );
         }
 
         return t.action === action;

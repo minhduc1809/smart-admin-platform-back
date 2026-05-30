@@ -51,5 +51,14 @@ export class DashboardController {
       limit ? parseInt(limit, 10) : 5,
     );
   }
+
+  @Get('sla-metrics')
+  @Roles(Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'SLA compliance metrics per workflow step' })
+  getSlaMetrics(@Query('days') days?: string) {
+    return this.dashboardService.getSlaMetrics(
+      days ? parseInt(days, 10) : 30,
+    );
+  }
 }
 

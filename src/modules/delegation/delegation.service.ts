@@ -39,6 +39,27 @@ export class DelegationService {
       throw new BadRequestException('delegation.TENANT_MISMATCH');
     }
 
+    // Validate scope IDs exist in the tenant
+    if (dto.formIds && dto.formIds.length > 0) {
+      const forms = await this.prisma.form.findMany({
+        where: { id: { in: dto.formIds }, tenantId: fromUser.tenantId },
+        select: { id: true },
+      });
+      if (forms.length !== dto.formIds.length) {
+        throw new BadRequestException('delegation.INVALID_FORM_IDS');
+      }
+    }
+
+    if (dto.workflowDefinitionIds && dto.workflowDefinitionIds.length > 0) {
+      const defs = await this.prisma.workflowDefinition.findMany({
+        where: { id: { in: dto.workflowDefinitionIds }, tenantId: fromUser.tenantId },
+        select: { id: true },
+      });
+      if (defs.length !== dto.workflowDefinitionIds.length) {
+        throw new BadRequestException('delegation.INVALID_WORKFLOW_DEFINITION_IDS');
+      }
+    }
+
     return this.prisma.delegation.create({
       data: {
         tenantId: fromUser.tenantId,
@@ -47,6 +68,8 @@ export class DelegationService {
         startDate: new Date(dto.startDate),
         endDate: new Date(dto.endDate),
         isActive: dto.isActive !== undefined ? dto.isActive : true,
+        formIds: dto.formIds ?? [],
+        workflowDefinitionIds: dto.workflowDefinitionIds ?? [],
       },
     });
   }
@@ -146,6 +169,8 @@ export class DelegationService {
     if (dto.startDate) updateData.startDate = new Date(dto.startDate);
     if (dto.endDate) updateData.endDate = new Date(dto.endDate);
     if (dto.isActive !== undefined) updateData.isActive = dto.isActive;
+    if (dto.formIds !== undefined) updateData.formIds = dto.formIds;
+    if (dto.workflowDefinitionIds !== undefined) updateData.workflowDefinitionIds = dto.workflowDefinitionIds;
 
     return this.prisma.delegation.update({
       where: { id },

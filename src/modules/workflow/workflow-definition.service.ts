@@ -159,6 +159,40 @@ export class WorkflowDefinitionService {
       if (!t.action) {
         throw new BadRequestException('Each transition must have an action');
       }
+
+      if (t.type === 'VOTING') {
+        if (!t.votingConfig) {
+          throw new BadRequestException(
+            'VOTING transitions must have votingConfig',
+          );
+        }
+        const vc = t.votingConfig;
+        if (!vc.approveAction || !vc.rejectAction) {
+          throw new BadRequestException(
+            'votingConfig must define approveAction and rejectAction',
+          );
+        }
+        if (!vc.approveThreshold || vc.approveThreshold < 1) {
+          throw new BadRequestException(
+            'votingConfig.approveThreshold must be >= 1',
+          );
+        }
+        if (!config.states.includes(vc.approveTarget)) {
+          throw new BadRequestException(
+            `votingConfig.approveTarget "${vc.approveTarget}" is not in the states list`,
+          );
+        }
+        if (!config.states.includes(vc.rejectTarget)) {
+          throw new BadRequestException(
+            `votingConfig.rejectTarget "${vc.rejectTarget}" is not in the states list`,
+          );
+        }
+        if (vc.approveAction === vc.rejectAction) {
+          throw new BadRequestException(
+            'votingConfig.approveAction and rejectAction must be different',
+          );
+        }
+      }
     }
   }
 }

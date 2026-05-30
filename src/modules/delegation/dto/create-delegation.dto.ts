@@ -1,7 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  IsArray,
   IsDateString,
   IsNotEmpty,
+  IsString,
   IsUUID,
   IsBoolean,
   IsOptional,
@@ -32,4 +34,16 @@ export class CreateDelegationDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @ApiProperty({ example: [], required: false, description: 'Restrict to specific form IDs. Empty = all forms.' })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  formIds?: string[];
+
+  @ApiProperty({ example: [], required: false, description: 'Restrict to specific workflow definition IDs. Empty = all workflows.' })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  workflowDefinitionIds?: string[];
 }

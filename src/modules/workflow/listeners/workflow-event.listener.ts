@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { NotificationService } from '../../notification/notification.service';
 
 @Injectable()
 export class WorkflowEventListener {
+  private readonly logger = new Logger(WorkflowEventListener.name);
+
   constructor(private readonly notificationService: NotificationService) {}
 
   @OnEvent('workflow.state.changed')
@@ -15,7 +17,14 @@ export class WorkflowEventListener {
     action: string;
     actorId: string;
   }) {
-    return this.notificationService.notifyWorkflowStateChanged(payload);
+    try {
+      await this.notificationService.notifyWorkflowStateChanged(payload);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send state-changed notification for submission ${payload.submissionId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   @OnEvent('workflow.completed')
@@ -24,7 +33,14 @@ export class WorkflowEventListener {
     instanceId: string;
     finalState: string;
   }) {
-    return this.notificationService.notifyWorkflowCompleted(payload);
+    try {
+      await this.notificationService.notifyWorkflowCompleted(payload);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send completed notification for submission ${payload.submissionId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   @OnEvent('workflow.resubmitted')
@@ -33,6 +49,13 @@ export class WorkflowEventListener {
     newSubmissionId: string;
     actorId: string;
   }) {
-    return this.notificationService.notifyWorkflowResubmitted(payload);
+    try {
+      await this.notificationService.notifyWorkflowResubmitted(payload);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send resubmitted notification for submission ${payload.originalSubmissionId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 }
