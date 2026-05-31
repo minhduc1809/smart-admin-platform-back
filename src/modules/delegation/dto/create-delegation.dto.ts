@@ -4,19 +4,18 @@ import {
   IsDateString,
   IsNotEmpty,
   IsString,
-  IsUUID,
   IsBoolean,
   IsOptional,
 } from 'class-validator';
 
 export class CreateDelegationDto {
-  @ApiProperty({ example: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
-  @IsUUID()
+  @ApiProperty({ example: 'cmpsw4oel0001m9yz06krowg8' })
+  @IsString()
   @IsNotEmpty()
   fromUserId: string;
 
-  @ApiProperty({ example: 'e39da12b-58cc-4372-a567-0e02b2c3d479' })
-  @IsUUID()
+  @ApiProperty({ example: 'cmpsw4ofk000bm9yzmh469u4c' })
+  @IsString()
   @IsNotEmpty()
   toUserId: string;
 

@@ -18,7 +18,7 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with local credentials' })
   @ApiResponse({ status: 200, description: 'Returns access & refresh tokens along with user info' })
@@ -28,7 +28,7 @@ export class AuthController {
 
   @Public()
   @Post('refresh')
-  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token' })
   @ApiResponse({ status: 200, description: 'Returns new access token' })

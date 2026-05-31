@@ -163,9 +163,22 @@ export class SubmissionService {
     if (
       role !== Role.ADMIN &&
       role !== Role.MANAGER &&
+      role !== Role.HR &&
       submission.submittedBy !== userId
     ) {
-      throw new ForbiddenException('error.FORBIDDEN');
+      // Check if user is a delegated approver
+      const now = new Date();
+      const hasDelegation = await this.prisma.delegation.findFirst({
+        where: {
+          toUserId: userId,
+          isActive: true,
+          startDate: { lte: now },
+          endDate: { gte: now },
+        },
+      });
+      if (!hasDelegation) {
+        throw new ForbiddenException('error.FORBIDDEN');
+      }
     }
 
     return submission;
