@@ -19,6 +19,7 @@ export class UserService {
     const existing = await this.prisma.user.findFirst({
       where: {
         tenantId,
+        deletedAt: null,
         OR: [{ email }, { username }],
       },
     });
@@ -274,6 +275,7 @@ export class UserService {
       const existing = await this.prisma.user.findFirst({
         where: {
           id: { not: id },
+          deletedAt: null,
           email: data.email,
         },
       });
