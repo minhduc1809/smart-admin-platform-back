@@ -1,98 +1,149 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Smart Admin Platform — Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API server cho nền tảng SaaS đa tenant quản lý **biểu mẫu động**, **quy trình phê duyệt** và **theo dõi đơn nộp**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Xây dựng với **NestJS 11** · **TypeScript 5.7** · **PostgreSQL (Prisma)** · **Redis (BullMQ)** · **Socket.io** · **Keycloak SSO**.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Tính năng chính
 
-## Project setup
+| Module | Mô tả |
+|--------|-------|
+| **Auth** | JWT + Keycloak SSO, Token Rotation với Token Family, phát hiện tái sử dụng refresh token (tự thu hồi toàn bộ phiên), tra cứu token O(1) qua `jti` |
+| **Form** | Biểu mẫu động theo JSON Schema — 4 loại trường (text/number/date/select), ValidationEngine với rule regex/min/max/minLength/afterField, phòng chống ReDoS (`safe-regex2`) |
+| **Submission** | Vòng đời đơn nộp: DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED/REJECTED/RETURNED/CANCELLED, chuỗi phiên bản nộp lại (revision chain), recall/withdraw |
+| **Workflow** | Máy trạng thái (FSM) config-driven: duyệt tuần tự, song song (PARALLEL_JOIN), bỏ phiếu theo ngưỡng (VOTING), SLA + tự động leo thang, chạy trong Prisma Transaction chống race condition |
+| **Delegation** | Ủy quyền phê duyệt theo phạm vi (form/workflow/khoảng thời gian), logic "acting-as" dùng vai trò người ủy quyền |
+| **Notification** | Thông báo realtime qua Socket.io (Redis adapter), đếm chưa đọc, đánh dấu đã đọc |
+| **Dashboard** | API analytics: thống kê tổng quan, xu hướng theo ngày, top biểu mẫu, SLA metrics (tỷ lệ tuân thủ, thời gian duyệt trung bình) |
+| **File** | Upload Cloudinary (avatar 400×400 face-crop, export xlsx), kiểm tra Magic Bytes chống giả mạo MIME, hàng đợi export BullMQ |
+| **Cron** | Quét vi phạm SLA (30 phút/lần, tính giờ làm việc), dọn token/export hết hạn, nhắc nhở duyệt đơn quá 24h |
+| **Audit Log** | Nhật ký bất biến CREATE/UPDATE/DELETE/APPROVE/REJECT kèm giá trị cũ/mới và IP |
 
-```bash
-$ npm install
+## Kiến trúc bảo mật
+
+Mọi request đi qua chuỗi 3 guard toàn cục theo thứ tự:
+
+```
+JwtAuthGuard  →  KeycloakSyncGuard  →  RolesGuard
+(xác thực JWT)   (đồng bộ user SSO)    (kiểm tra @Roles)
 ```
 
-## Compile and run the project
+- **Multi-tenancy**: mọi truy vấn Prisma được scope theo `tenantId` (ClsModule — request-scoped context)
+- **Vai trò**: `ADMIN` · `MANAGER` · `HR` · `USER`
+- **Rate limiting**: 60 req/phút toàn cục, 30 req/phút cho login/refresh
+- **Validation**: Global pipe `whitelist + transform`, response bọc envelope chuẩn (TransformInterceptor), lỗi dịch i18n (`lang` query / `x-lang` header)
 
-```bash
-# development
-$ npm run start
+## Cấu trúc thư mục
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+```
+src/
+├── common/              # Decorators, guards, filters, interceptors, utils dùng chung
+├── modules/
+│   ├── auth/            # Login, Refresh, Logout + strategies (JWT, Keycloak)
+│   ├── user/            # CRUD users, profile, roles, permissions
+│   ├── form/            # CRUD form + ValidationEngine
+│   ├── submission/      # Submit, Recall, Withdraw, Resubmit
+│   ├── workflow/        # WorkflowEngine (FSM), definition/action services
+│   ├── delegation/      # Ủy quyền phê duyệt
+│   ├── file/            # Upload, Cloudinary, export processor (BullMQ)
+│   ├── notification/    # API thông báo
+│   ├── realtime/        # Socket.io gateway + Redis adapter
+│   ├── dashboard/       # Analytics APIs
+│   ├── audit-log/       # Nhật ký audit
+│   ├── api-key/         # API key cho bên thứ ba
+│   └── cron/            # Tác vụ định kỳ
+└── prisma/              # PrismaService
 ```
 
-## Run tests
+## Yêu cầu môi trường
+
+- Node.js ≥ 20
+- PostgreSQL ≥ 14
+- Redis ≥ 7
+- (Tuỳ chọn) Keycloak — cho SSO; có thể dùng JWT local thuần
+
+## Cài đặt & Chạy
+
+### 1. Cài dependencies
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm install
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 2. Cấu hình môi trường
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+cp .env.example .env
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Các biến quan trọng trong `.env`:
 
-## Resources
+| Biến | Mô tả | Mặc định |
+|------|-------|----------|
+| `PORT` | Cổng API server | `3000` |
+| `DATABASE_URL` | Chuỗi kết nối PostgreSQL | `postgresql://postgres:password@localhost:5432/smart_admin_db` |
+| `REDIS_HOST` / `REDIS_PORT` | Kết nối Redis (BullMQ + Socket.io adapter) | `localhost:6379` |
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | Khóa ký token (bắt buộc đổi ở production) | — |
+| `JWT_ACCESS_EXPIRATION` / `JWT_REFRESH_EXPIRATION` | TTL token | `15m` / `7d` |
+| `KEYCLOAK_URL` / `KEYCLOAK_REALM` / `KEYCLOAK_CLIENT_ID` | Cấu hình SSO | — |
+| `CLOUDINARY_*` | Lưu trữ avatar/export trên cloud | — |
+| `FRONTEND_URL` | Origin frontend cho CORS | `http://localhost:8000` |
 
-Check out a few resources that may come in handy when working with NestJS:
+### 3. Khởi tạo database
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+npx prisma migrate dev      # Chạy migrations
+npx prisma generate         # Sinh Prisma Client
+npx prisma db seed          # Seed admin mặc định (admin@example.com / 123456)
+```
 
-## Support
+**Seed dữ liệu demo đầy đủ** (công ty 150 nhân sự, 8 biểu mẫu, 7 quy trình, ~180 đơn nộp trải 15 ngày):
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+npx ts-node prisma/seed-company-data.ts
+```
 
-## Stay in touch
+> ⚠️ Script này **xoá toàn bộ dữ liệu cũ** của tenant `default` trước khi tạo mới.
+> Mật khẩu mọi tài khoản demo: `Test@12345` — tài khoản chính: `admin@techvision.vn` (ADMIN).
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+### 4. Chạy server
 
-## License
+```bash
+npm run start:dev           # Dev với watch mode → http://localhost:3000
+npm run build               # Build production → ./dist
+npm run start:prod          # Chạy bản build
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Swagger docs: **http://localhost:3000/api**
+
+## Chạy bằng Docker
+
+```bash
+docker compose up -d
+```
+
+Stack đầy đủ gồm: Backend (3000) · PostgreSQL 16 (5432) · Redis 7 (6800) · Keycloak (8080, auto-import realm) · PgAdmin (5050).
+
+Container backend tự động chạy `prisma migrate deploy` và tạo admin mặc định khi khởi động.
+
+## Kiểm thử
+
+```bash
+npm run test                # Unit tests
+npm run test:watch          # Watch mode
+npm run test:cov            # Coverage
+npm run test:e2e            # Integration tests (cần database thật)
+```
+
+## Quy ước code
+
+- **Prettier**: single quotes, trailing commas — `npm run format`
+- **ESLint**: typescript-eslint v9 — `npm run lint` (auto-fix)
+- Mỗi module theo chuẩn NestJS: `*.module.ts` / `*.controller.ts` / `*.service.ts` / `dto/`
+- Sửa đổi schema → `npx prisma migrate dev` + `npx prisma generate`
+
+## Tài liệu API chi tiết
+
+Xem thư mục `frontend/docs/` — tài liệu từng nhóm API: `AUTH_API.md`, `FORM_API.md`, `SUBMISSION_API.md`, `WORKFLOW_API.md`, `DASHBOARD_API.md`, `NOTIFICATION_API.md`, `REALTIME_API.md`, `FILE_API.md`, `USER_API.md`, `API_KEY_API.md`.
