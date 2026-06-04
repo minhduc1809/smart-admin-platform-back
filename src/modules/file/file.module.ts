@@ -23,7 +23,8 @@ import * as fs from 'fs';
         },
         filename: (req, file, cb) => {
           // Generate secure unique filename
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           const ext = extname(file.originalname);
           cb(null, `${uniqueSuffix}${ext}`);
         },
@@ -38,7 +39,7 @@ import * as fs from 'fs';
           'image/jpg',
           'application/pdf',
           'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document' // docx
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
         ];
         if (!allowedMimeTypes.includes(file.mimetype)) {
           return cb(new BadRequestException('file.INVALID_FORMAT'), false);

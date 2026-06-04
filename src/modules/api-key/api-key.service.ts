@@ -6,7 +6,10 @@ import { ApiKeyDto } from './dto/api-key.dto';
 
 @Injectable()
 export class ApiKeyService {
-  constructor(private prisma: PrismaService, private cls: ClsService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cls: ClsService,
+  ) {}
 
   async createApiKey(dto: ApiKeyDto) {
     const key = `sk_${crypto.randomBytes(24).toString('hex')}`;
@@ -26,7 +29,7 @@ export class ApiKeyService {
 
   async listApiKeys() {
     return this.prisma.apiKey.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -36,7 +39,7 @@ export class ApiKeyService {
 
     return this.prisma.apiKey.update({
       where: { id } as any,
-      data: { revoked: true } as any
+      data: { revoked: true } as any,
     });
   }
 }

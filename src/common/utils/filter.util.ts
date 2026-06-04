@@ -8,7 +8,10 @@ export interface FilterDto {
 }
 
 export class FilterUtil {
-  static buildPrismaWhere(condition: Record<string, any> = {}, filters: FilterDto[] = []): any {
+  static buildPrismaWhere(
+    condition: Record<string, any> = {},
+    filters: FilterDto[] = [],
+  ): any {
     const where: any = { ...condition };
 
     if (where.deletedAt === undefined) {
@@ -39,22 +42,53 @@ export class FilterUtil {
       let opCondition: any;
 
       switch (operator) {
-        case 'eq': opCondition = { equals: value }; break;
-        case 'ne': opCondition = { not: value }; break;
-        case 'contain': opCondition = { contains: value, mode: 'insensitive' }; break;
-        case 'not_contain': opCondition = { not: { contains: value, mode: 'insensitive' } }; break;
-        case 'in': opCondition = { in: values }; break;
-        case 'not_in': opCondition = { notIn: values }; break;
-        case 'lt': opCondition = { lt: value }; break;
-        case 'lte': opCondition = { lte: value }; break;
-        case 'gt': opCondition = { gt: value }; break;
-        case 'gte': opCondition = { gte: value }; break;
-        case 'between': opCondition = { gte: values[0], lte: values[1] }; break;
-        case 'null': opCondition = null; break; // Prisma special null handling
-        case 'not_null': opCondition = { not: null }; break;
-        case 'start': opCondition = { startsWith: value, mode: 'insensitive' }; break;
-        case 'end': opCondition = { endsWith: value, mode: 'insensitive' }; break;
-        default: continue;
+        case 'eq':
+          opCondition = { equals: value };
+          break;
+        case 'ne':
+          opCondition = { not: value };
+          break;
+        case 'contain':
+          opCondition = { contains: value, mode: 'insensitive' };
+          break;
+        case 'not_contain':
+          opCondition = { not: { contains: value, mode: 'insensitive' } };
+          break;
+        case 'in':
+          opCondition = { in: values };
+          break;
+        case 'not_in':
+          opCondition = { notIn: values };
+          break;
+        case 'lt':
+          opCondition = { lt: value };
+          break;
+        case 'lte':
+          opCondition = { lte: value };
+          break;
+        case 'gt':
+          opCondition = { gt: value };
+          break;
+        case 'gte':
+          opCondition = { gte: value };
+          break;
+        case 'between':
+          opCondition = { gte: values[0], lte: values[1] };
+          break;
+        case 'null':
+          opCondition = null;
+          break; // Prisma special null handling
+        case 'not_null':
+          opCondition = { not: null };
+          break;
+        case 'start':
+          opCondition = { startsWith: value, mode: 'insensitive' };
+          break;
+        case 'end':
+          opCondition = { endsWith: value, mode: 'insensitive' };
+          break;
+        default:
+          continue;
       }
 
       if (opCondition !== undefined) {

@@ -20,7 +20,13 @@ import { memoryStorage } from 'multer';
 import { FileService } from './file.service';
 import { CloudinaryService } from './cloudinary.service';
 import { ExportFilterDto } from './dto/export-filter.dto';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -41,10 +47,22 @@ export class FileController {
   ) {}
 
   @Post('avatar')
-  @ApiOperation({ summary: 'Upload avatar to Cloudinary (max 5MB, image only)' })
+  @ApiOperation({
+    summary: 'Upload avatar to Cloudinary (max 5MB, image only)',
+  })
   @ApiConsumes('multipart/form-data')
-  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
-  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }))
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
   async uploadAvatar(
     @UploadedFile(
       new ParseFilePipe({
@@ -80,9 +98,7 @@ export class FileController {
   async uploadFile(
     @UploadedFile(
       new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }),
-        ],
+        validators: [new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 })],
       }),
     )
     file: Express.Multer.File,
@@ -96,7 +112,9 @@ export class FileController {
   @Post('export')
   @HttpCode(HttpStatus.ACCEPTED)
   @Roles(Role.ADMIN, Role.MANAGER)
-  @ApiOperation({ summary: 'Tạo job xuất file Excel (Bất đồng bộ) — trả về 202 Accepted' })
+  @ApiOperation({
+    summary: 'Tạo job xuất file Excel (Bất đồng bộ) — trả về 202 Accepted',
+  })
   async exportSubmissions(
     @CurrentUser('id') userId: string,
     @Body() dto: ExportFilterDto,
@@ -141,9 +159,15 @@ export class FileController {
       throw new NotFoundException('file.PHYSICAL_NOT_FOUND');
     }
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''export-${job.id}.xlsx`);
-    
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''export-${job.id}.xlsx`,
+    );
+
     const fileStream = createReadStream(fullPath);
     fileStream.pipe(res);
   }
@@ -157,8 +181,12 @@ export class FileController {
     @CurrentUser() user: any,
     @Res() res: Response,
   ) {
-    const fileRecord = await this.fileService.getFileRecord(id, user.id, user.role);
-    
+    const fileRecord = await this.fileService.getFileRecord(
+      id,
+      user.id,
+      user.role,
+    );
+
     // Check if physical file exists
     const fullPath = join(process.cwd(), fileRecord.storedPath);
     if (!existsSync(fullPath)) {
@@ -168,8 +196,11 @@ export class FileController {
     // RFC 5987 encoding for Unicode filenames
     const encodedName = encodeURIComponent(fileRecord.originalName);
     res.setHeader('Content-Type', fileRecord.mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedName}`);
-    
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodedName}`,
+    );
+
     const fileStream = createReadStream(fullPath);
     fileStream.pipe(res);
   }

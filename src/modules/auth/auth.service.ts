@@ -36,7 +36,9 @@ export class AuthService {
       const value = process.env[key];
       if (!value) {
         if (isProd) {
-          throw new Error(`Environment variable ${key} is required in production`);
+          throw new Error(
+            `Environment variable ${key} is required in production`,
+          );
         }
         return defaultValue || '';
       }
@@ -79,7 +81,8 @@ export class AuthService {
     });
 
     const jti = randomUUID();
-    const refreshExpiration = (process.env.JWT_REFRESH_EXPIRATION ?? '7d') as StringValue;
+    const refreshExpiration = (process.env.JWT_REFRESH_EXPIRATION ??
+      '7d') as StringValue;
     const refreshToken = this.jwtService.sign(
       { ...payload, jti },
       {
@@ -200,7 +203,8 @@ export class AuthService {
 
       // Rotate: issue a new refresh token in the same family
       const newJti = randomUUID();
-      const refreshExpiration = (process.env.JWT_REFRESH_EXPIRATION ?? '7d') as StringValue;
+      const refreshExpiration = (process.env.JWT_REFRESH_EXPIRATION ??
+        '7d') as StringValue;
       const newRefreshToken = this.jwtService.sign(
         { ...jwtPayload, jti: newJti },
         {

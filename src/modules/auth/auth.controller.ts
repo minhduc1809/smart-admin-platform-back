@@ -1,6 +1,18 @@
-import { Body, Controller, Post, Get, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Get,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { Public } from 'src/common/decorators/public.decorator';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
@@ -21,7 +33,10 @@ export class AuthController {
   @Throttle({ default: { ttl: 60000, limit: 30 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with local credentials' })
-  @ApiResponse({ status: 200, description: 'Returns access & refresh tokens along with user info' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns access & refresh tokens along with user info',
+  })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
   }

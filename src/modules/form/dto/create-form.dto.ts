@@ -20,16 +20,16 @@ export class CreateFormDto {
           key: 'ly_do',
           label: 'Lý do xin nghỉ',
           type: 'text',
-          rules: { required: true, minLength: 10, maxLength: 500 }
+          rules: { required: true, minLength: 10, maxLength: 500 },
         },
         {
           key: 'so_ngay',
           label: 'Số ngày xin nghỉ',
           type: 'number',
-          rules: { required: true, min: 1, max: 30 }
-        }
-      ]
-    }
+          rules: { required: true, min: 1, max: 30 },
+        },
+      ],
+    },
   })
   @IsObject()
   @IsNotEmpty()

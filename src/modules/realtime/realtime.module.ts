@@ -6,10 +6,7 @@ import { RealtimeEventListener } from './listeners/realtime-event.listener';
 
 @Global()
 @Module({
-  imports: [
-    JwtModule.register({}),
-    ConfigModule,
-  ],
+  imports: [JwtModule.register({}), ConfigModule],
   providers: [RealtimeGateway, RealtimeEventListener],
   exports: [RealtimeGateway],
 })

@@ -66,7 +66,13 @@ export class FileService {
         status: JobStatus.PENDING,
         progress: 0,
         createdBy: userId,
-        result: { params: { formId: dto.formId, fromDate: dto.fromDate, toDate: dto.toDate } },
+        result: {
+          params: {
+            formId: dto.formId,
+            fromDate: dto.fromDate,
+            toDate: dto.toDate,
+          },
+        },
       },
     });
 
@@ -138,7 +144,9 @@ export class FileService {
       throw new ForbiddenException('error.FORBIDDEN');
     }
 
-    const result = job.result as { params?: { formId?: string; fromDate?: string; toDate?: string } } | null;
+    const result = job.result as {
+      params?: { formId?: string; fromDate?: string; toDate?: string };
+    } | null;
     const params = result?.params ?? {};
 
     await this.prisma.jobRecord.update({

@@ -52,11 +52,16 @@ export class DelegationService {
 
     if (dto.workflowDefinitionIds && dto.workflowDefinitionIds.length > 0) {
       const defs = await this.prisma.workflowDefinition.findMany({
-        where: { id: { in: dto.workflowDefinitionIds }, tenantId: fromUser.tenantId },
+        where: {
+          id: { in: dto.workflowDefinitionIds },
+          tenantId: fromUser.tenantId,
+        },
         select: { id: true },
       });
       if (defs.length !== dto.workflowDefinitionIds.length) {
-        throw new BadRequestException('delegation.INVALID_WORKFLOW_DEFINITION_IDS');
+        throw new BadRequestException(
+          'delegation.INVALID_WORKFLOW_DEFINITION_IDS',
+        );
       }
     }
 
@@ -170,7 +175,8 @@ export class DelegationService {
     if (dto.endDate) updateData.endDate = new Date(dto.endDate);
     if (dto.isActive !== undefined) updateData.isActive = dto.isActive;
     if (dto.formIds !== undefined) updateData.formIds = dto.formIds;
-    if (dto.workflowDefinitionIds !== undefined) updateData.workflowDefinitionIds = dto.workflowDefinitionIds;
+    if (dto.workflowDefinitionIds !== undefined)
+      updateData.workflowDefinitionIds = dto.workflowDefinitionIds;
 
     return this.prisma.delegation.update({
       where: { id },

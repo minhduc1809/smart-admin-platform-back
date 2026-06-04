@@ -34,13 +34,22 @@ export class CreateDelegationDto {
   @IsOptional()
   isActive?: boolean;
 
-  @ApiProperty({ example: [], required: false, description: 'Restrict to specific form IDs. Empty = all forms.' })
+  @ApiProperty({
+    example: [],
+    required: false,
+    description: 'Restrict to specific form IDs. Empty = all forms.',
+  })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
   formIds?: string[];
 
-  @ApiProperty({ example: [], required: false, description: 'Restrict to specific workflow definition IDs. Empty = all workflows.' })
+  @ApiProperty({
+    example: [],
+    required: false,
+    description:
+      'Restrict to specific workflow definition IDs. Empty = all workflows.',
+  })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Role, Prisma } from '@prisma/client';
@@ -133,7 +137,8 @@ export class UserService {
     const page = Math.max(1, dto.page ?? 1);
     const limit = Math.max(1, dto.limit ?? 10);
 
-    const condition = dto.condition && typeof dto.condition === 'object' ? dto.condition : {};
+    const condition =
+      dto.condition && typeof dto.condition === 'object' ? dto.condition : {};
     const filters = Array.isArray(dto.filters) ? dto.filters : [];
 
     const where = FilterUtil.buildPrismaWhere(condition, filters);
@@ -193,8 +198,13 @@ export class UserService {
   }
 
   private buildOrderByFromSortInput(
-    sort?: string | { field?: string; order?: string } | Array<{ field?: string; order?: string }>,
-  ): Prisma.UserOrderByWithRelationInput | Prisma.UserOrderByWithRelationInput[] {
+    sort?:
+      | string
+      | { field?: string; order?: string }
+      | Array<{ field?: string; order?: string }>,
+  ):
+    | Prisma.UserOrderByWithRelationInput
+    | Prisma.UserOrderByWithRelationInput[] {
     if (!sort) {
       return { createdAt: 'desc' };
     }
@@ -214,9 +224,10 @@ export class UserService {
     return order ?? { createdAt: 'desc' };
   }
 
-  private normalizeSortItem(
-    item?: { field?: string; order?: string },
-  ): Prisma.UserOrderByWithRelationInput | null {
+  private normalizeSortItem(item?: {
+    field?: string;
+    order?: string;
+  }): Prisma.UserOrderByWithRelationInput | null {
     const field = item?.field?.trim();
     const direction = item?.order?.trim().toLowerCase();
 

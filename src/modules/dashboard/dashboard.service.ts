@@ -7,35 +7,39 @@ export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getSummary() {
-    const [total, pending, approved, rejected] = await this.prisma.$transaction([
-      this.prisma.submission.count(),
-      this.prisma.submission.count({
-        where: { status: SubmissionStatus.UNDER_REVIEW },
-      }),
-      this.prisma.submission.count({
-        where: { status: SubmissionStatus.APPROVED },
-      }),
-      this.prisma.submission.count({
-        where: { status: SubmissionStatus.REJECTED },
-      }),
-    ]);
+    const [total, pending, approved, rejected] = await this.prisma.$transaction(
+      [
+        this.prisma.submission.count(),
+        this.prisma.submission.count({
+          where: { status: SubmissionStatus.UNDER_REVIEW },
+        }),
+        this.prisma.submission.count({
+          where: { status: SubmissionStatus.APPROVED },
+        }),
+        this.prisma.submission.count({
+          where: { status: SubmissionStatus.REJECTED },
+        }),
+      ],
+    );
 
     return { total, pending, approved, rejected };
   }
 
   async getMySummary(userId: string) {
-    const [total, pending, approved, rejected] = await this.prisma.$transaction([
-      this.prisma.submission.count({ where: { submittedBy: userId } }),
-      this.prisma.submission.count({
-        where: { submittedBy: userId, status: SubmissionStatus.UNDER_REVIEW },
-      }),
-      this.prisma.submission.count({
-        where: { submittedBy: userId, status: SubmissionStatus.APPROVED },
-      }),
-      this.prisma.submission.count({
-        where: { submittedBy: userId, status: SubmissionStatus.REJECTED },
-      }),
-    ]);
+    const [total, pending, approved, rejected] = await this.prisma.$transaction(
+      [
+        this.prisma.submission.count({ where: { submittedBy: userId } }),
+        this.prisma.submission.count({
+          where: { submittedBy: userId, status: SubmissionStatus.UNDER_REVIEW },
+        }),
+        this.prisma.submission.count({
+          where: { submittedBy: userId, status: SubmissionStatus.APPROVED },
+        }),
+        this.prisma.submission.count({
+          where: { submittedBy: userId, status: SubmissionStatus.REJECTED },
+        }),
+      ],
+    );
 
     return { total, pending, approved, rejected };
   }
@@ -57,7 +61,9 @@ export class DashboardService {
     const from = new Date();
     from.setDate(from.getDate() - clampedDays);
 
-    const rows = await this.prisma.$queryRaw<Array<{ date: Date; count: number }>>`
+    const rows = await this.prisma.$queryRaw<
+      Array<{ date: Date; count: number }>
+    >`
       SELECT DATE(created_at) AS date, COUNT(*)::int AS count
       FROM submissions
       WHERE created_at >= ${from}
@@ -100,7 +106,9 @@ export class DashboardService {
 
     const instances = await this.prisma.workflowInstance.findMany({
       where: {
-        status: { in: [WorkflowInstanceStatus.ACTIVE, WorkflowInstanceStatus.COMPLETED] },
+        status: {
+          in: [WorkflowInstanceStatus.ACTIVE, WorkflowInstanceStatus.COMPLETED],
+        },
         updatedAt: { gte: from },
       },
       include: {
@@ -114,7 +122,13 @@ export class DashboardService {
 
     const grouped = new Map<
       string,
-      { slaHours: number; definitionName: string; step: string; durations: number[]; breached: number }
+      {
+        slaHours: number;
+        definitionName: string;
+        step: string;
+        durations: number[];
+        breached: number;
+      }
     >();
 
     for (const instance of instances) {
@@ -136,11 +150,15 @@ export class DashboardService {
         }
 
         const entryRecord = instance.histories.find((h) => h.toStep === step);
-        const exitRecord = instance.histories.find((h) => h.fromStep === step && h.toStep !== step);
+        const exitRecord = instance.histories.find(
+          (h) => h.fromStep === step && h.toStep !== step,
+        );
 
         if (entryRecord) {
           const entryTime = entryRecord.createdAt.getTime();
-          const exitTime = exitRecord ? exitRecord.createdAt.getTime() : Date.now();
+          const exitTime = exitRecord
+            ? exitRecord.createdAt.getTime()
+            : Date.now();
           const durationHours = (exitTime - entryTime) / (1000 * 60 * 60);
 
           const bucket = grouped.get(key)!;
@@ -155,7 +173,8 @@ export class DashboardService {
     return Array.from(grouped.values()).map((bucket) => {
       const avg =
         bucket.durations.length > 0
-          ? bucket.durations.reduce((a, b) => a + b, 0) / bucket.durations.length
+          ? bucket.durations.reduce((a, b) => a + b, 0) /
+            bucket.durations.length
           : 0;
       return {
         definitionName: bucket.definitionName,
@@ -163,12 +182,16 @@ export class DashboardService {
         slaHours: bucket.slaHours,
         totalInstances: bucket.durations.length,
         breachedCount: bucket.breached,
-        complianceRate: bucket.durations.length > 0
-          ? Math.round(((bucket.durations.length - bucket.breached) / bucket.durations.length) * 10000) / 100
-          : 100,
+        complianceRate:
+          bucket.durations.length > 0
+            ? Math.round(
+                ((bucket.durations.length - bucket.breached) /
+                  bucket.durations.length) *
+                  10000,
+              ) / 100
+            : 100,
         avgDurationHours: Math.round(avg * 100) / 100,
       };
     });
   }
 }
-

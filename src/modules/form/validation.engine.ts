@@ -33,7 +33,10 @@ export interface ValidationError {
 
 @Injectable()
 export class ValidationEngine {
-  validate(schema: FormSchema, payload: Record<string, any>): ValidationError[] {
+  validate(
+    schema: FormSchema,
+    payload: Record<string, any>,
+  ): ValidationError[] {
     const errors: ValidationError[] = [];
 
     if (!schema || !schema.fields) {
@@ -73,14 +76,23 @@ export class ValidationEngine {
         }
         if (rules.regex) {
           if (!safe(rules.regex)) {
-            errors.push({ field: fieldDef.key, i18nKey: 'validation.unsafe_pattern' });
+            errors.push({
+              field: fieldDef.key,
+              i18nKey: 'validation.unsafe_pattern',
+            });
           } else {
             try {
               if (!new RegExp(rules.regex).test(String(value))) {
-                errors.push({ field: fieldDef.key, i18nKey: 'validation.pattern' });
+                errors.push({
+                  field: fieldDef.key,
+                  i18nKey: 'validation.pattern',
+                });
               }
             } catch {
-              errors.push({ field: fieldDef.key, i18nKey: 'validation.invalid_pattern' });
+              errors.push({
+                field: fieldDef.key,
+                i18nKey: 'validation.invalid_pattern',
+              });
             }
           }
         }
@@ -138,7 +150,10 @@ export class ValidationEngine {
             sizeExceeded = true;
           }
 
-          if (allowedTypes.length > 0 && !this.isAllowedFileType(fileInfo, allowedTypes)) {
+          if (
+            allowedTypes.length > 0 &&
+            !this.isAllowedFileType(fileInfo, allowedTypes)
+          ) {
             typeInvalid = true;
           }
         }
@@ -177,7 +192,11 @@ export class ValidationEngine {
       if (rules.afterField) {
         const refValue = payload[rules.afterField];
         const thisValue = payload[fieldDef.key];
-        if (refValue && thisValue && new Date(thisValue) <= new Date(refValue)) {
+        if (
+          refValue &&
+          thisValue &&
+          new Date(thisValue) <= new Date(refValue)
+        ) {
           errors.push({
             field: fieldDef.key,
             i18nKey: 'validation.date_after_field',
@@ -189,7 +208,11 @@ export class ValidationEngine {
     return errors;
   }
 
-  private checkType(field: string, value: any, type: string): ValidationError | null {
+  private checkType(
+    field: string,
+    value: any,
+    type: string,
+  ): ValidationError | null {
     if (type === 'number' && isNaN(Number(value)))
       return { field, i18nKey: 'validation.type_number' };
     if (type === 'date' && isNaN(Date.parse(value)))
@@ -197,7 +220,10 @@ export class ValidationEngine {
     return null;
   }
 
-  private resolveSelectOptions(fieldDef: SchemaField, rules: Record<string, any>): any[] {
+  private resolveSelectOptions(
+    fieldDef: SchemaField,
+    rules: Record<string, any>,
+  ): any[] {
     if (Array.isArray(rules.options)) return rules.options;
     if (Array.isArray(fieldDef.options)) return fieldDef.options;
     if (Array.isArray(rules.allowedValues)) return rules.allowedValues;
@@ -214,8 +240,10 @@ export class ValidationEngine {
     const sizeRaw = value.sizeBytes ?? value.size ?? value.fileSize;
     const sizeBytes = this.toNumberOrUndefined(sizeRaw);
     const mimeTypeRaw = value.mimeType ?? value.mimetype ?? value.type;
-    const nameRaw = value.name ?? value.originalName ?? value.filename ?? value.fileName;
-    const mimeType = typeof mimeTypeRaw === 'string' ? mimeTypeRaw.trim() : undefined;
+    const nameRaw =
+      value.name ?? value.originalName ?? value.filename ?? value.fileName;
+    const mimeType =
+      typeof mimeTypeRaw === 'string' ? mimeTypeRaw.trim() : undefined;
     const name = typeof nameRaw === 'string' ? nameRaw.trim() : undefined;
 
     if (sizeBytes === undefined && !mimeType && !name) return null;
@@ -241,9 +269,14 @@ export class ValidationEngine {
   ): boolean {
     const mimeType = fileInfo.mimeType?.toLowerCase();
     const extension = this.getExtension(fileInfo.name);
-    const mimeSubtype = mimeType?.includes('/') ? mimeType.split('/')[1] : undefined;
+    const mimeSubtype = mimeType?.includes('/')
+      ? mimeType.split('/')[1]
+      : undefined;
 
-    if (mimeType && allowedTypes.some((type) => type.includes('/') && type === mimeType)) {
+    if (
+      mimeType &&
+      allowedTypes.some((type) => type.includes('/') && type === mimeType)
+    ) {
       return true;
     }
 

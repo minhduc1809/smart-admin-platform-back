@@ -1,6 +1,21 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, Put } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  Put,
+} from '@nestjs/common';
 import { UserService } from './user.service';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { Role } from '@prisma/client';
@@ -32,10 +47,20 @@ export class UserController {
   @ApiOperation({ summary: 'Danh sách người dùng (Admin only)' })
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'role', required: false, enum: Role })
-  @ApiQuery({ name: 'status', required: false, type: String, description: 'active | inactive | true | false | 1 | 0' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    type: String,
+    description: 'active | inactive | true | false | 1 | 0',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'sort', required: false, type: String, description: 'field:asc|desc (e.g. createdAt:desc)' })
+  @ApiQuery({
+    name: 'sort',
+    required: false,
+    type: String,
+    description: 'field:asc|desc (e.g. createdAt:desc)',
+  })
   findAll(
     @Query('search') search?: string,
     @Query('role') role?: Role,
@@ -56,7 +81,9 @@ export class UserController {
 
   @Post('page')
   @Roles(Role.ADMIN, Role.MANAGER)
-  @ApiOperation({ summary: 'Danh sách người dùng theo định dạng phân trang FE' })
+  @ApiOperation({
+    summary: 'Danh sách người dùng theo định dạng phân trang FE',
+  })
   findPage(@Body() dto: UserPageDto) {
     return this.userService.findPage(dto);
   }

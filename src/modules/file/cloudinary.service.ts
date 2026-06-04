@@ -39,7 +39,9 @@ export class CloudinaryService {
           },
           (error, result: UploadApiResponse | undefined) => {
             if (error || !result) {
-              reject(new BadRequestException(error?.message || 'Upload failed'));
+              reject(
+                new BadRequestException(error?.message || 'Upload failed'),
+              );
               return;
             }
             resolve({ url: result.secure_url, publicId: result.public_id });
@@ -67,7 +69,11 @@ export class CloudinaryService {
           },
           (error, result: UploadApiResponse | undefined) => {
             if (error || !result) {
-              reject(new BadRequestException(error?.message || 'Export upload failed'));
+              reject(
+                new BadRequestException(
+                  error?.message || 'Export upload failed',
+                ),
+              );
               return;
             }
             resolve({ url: result.secure_url, publicId: result.public_id });

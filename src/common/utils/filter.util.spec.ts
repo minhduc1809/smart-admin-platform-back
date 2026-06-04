@@ -25,15 +25,7 @@ describe('FilterUtil', () => {
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0),
     );
     const to = new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth() + 1,
-        0,
-        23,
-        59,
-        59,
-        999,
-      ),
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999),
     );
     const filters: FilterDto[] = [
       { field: 'createdAt', operator: 'between', values: [from, to] },

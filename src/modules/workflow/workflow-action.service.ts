@@ -49,7 +49,10 @@ export class WorkflowActionService {
           where: { id: dto.submissionId },
           select: { formId: true },
         });
-        if (!submission || !activeDelegation.formIds.includes(submission.formId)) {
+        if (
+          !submission ||
+          !activeDelegation.formIds.includes(submission.formId)
+        ) {
           throw new ForbiddenException('workflow.DELEGATION_SCOPE_FORM');
         }
       }
@@ -60,7 +63,12 @@ export class WorkflowActionService {
           where: { submissionId: dto.submissionId, status: 'ACTIVE' },
           select: { definitionId: true },
         });
-        if (!instance || !activeDelegation.workflowDefinitionIds.includes(instance.definitionId)) {
+        if (
+          !instance ||
+          !activeDelegation.workflowDefinitionIds.includes(
+            instance.definitionId,
+          )
+        ) {
           throw new ForbiddenException('workflow.DELEGATION_SCOPE_WORKFLOW');
         }
       }
@@ -381,11 +389,19 @@ export class WorkflowActionService {
 
       for (const del of activeDelegations) {
         // Skip delegation if scoped to specific forms and this form is not included
-        if (del.formIds.length > 0 && submission && !del.formIds.includes(submission.formId)) {
+        if (
+          del.formIds.length > 0 &&
+          submission &&
+          !del.formIds.includes(submission.formId)
+        ) {
           continue;
         }
         // Skip delegation if scoped to specific workflows and this definition is not included
-        if (del.workflowDefinitionIds.length > 0 && instance && !del.workflowDefinitionIds.includes(instance.definitionId)) {
+        if (
+          del.workflowDefinitionIds.length > 0 &&
+          instance &&
+          !del.workflowDefinitionIds.includes(instance.definitionId)
+        ) {
           continue;
         }
         roles.add(del.fromUser.role);
@@ -433,7 +449,8 @@ export class WorkflowActionService {
             ? performedVotes.some(
                 (v) =>
                   v.actorId === userId &&
-                  (v.action === vc.approveAction || v.action === vc.rejectAction),
+                  (v.action === vc.approveAction ||
+                    v.action === vc.rejectAction),
               )
             : false;
           if (!userAlreadyVoted) {
@@ -519,8 +536,12 @@ export class WorkflowActionService {
         // Build effective roles for this specific instance (base roles + scoped delegation roles)
         const effectiveRoles = new Set(roles);
         for (const del of scopedDelegations) {
-          const formOk = del.formIds.length === 0 || del.formIds.includes(inst.submission.formId);
-          const wfOk = del.workflowDefinitionIds.length === 0 || del.workflowDefinitionIds.includes(inst.definitionId);
+          const formOk =
+            del.formIds.length === 0 ||
+            del.formIds.includes(inst.submission.formId);
+          const wfOk =
+            del.workflowDefinitionIds.length === 0 ||
+            del.workflowDefinitionIds.includes(inst.definitionId);
           if (formOk && wfOk) {
             effectiveRoles.add(del.fromUser.role);
           }
