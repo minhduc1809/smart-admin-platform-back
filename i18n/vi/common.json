@@ -6,7 +6,12 @@
     "TOKEN_EXPIRED": "Token đã hết hạn",
     "UNAUTHORIZED": "Không có quyền truy cập",
     "LOGOUT_SUCCESS": "Đăng xuất thành công",
-    "REGISTER_SUCCESS": "Đăng ký thành công"
+    "REGISTER_SUCCESS": "Đăng ký thành công",
+    "FORGOT_PASSWORD_SENT": "Liên kết khôi phục mật khẩu đã được gửi đến email của bạn nếu nó tồn tại trên hệ thống.",
+    "INVALID_OR_EXPIRED_RESET_TOKEN": "Mã khôi phục mật khẩu không hợp lệ hoặc đã hết hạn.",
+    "PASSWORD_RESET_SUCCESS": "Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.",
+    "PASSWORD_CHANGE_SUCCESS": "Đổi mật khẩu thành công.",
+    "INCORRECT_OLD_PASSWORD": "Mật khẩu cũ không chính xác"
   },
   "user": {
     "NOT_FOUND": "Không tìm thấy người dùng",
