@@ -72,7 +72,7 @@ describe('ValidationEngine', () => {
     };
     const result = engine.validate(schema, data);
     expect(result).toContainEqual(
-      expect.objectContaining({ field: 'age', i18nKey: 'validation.required' })
+      expect.objectContaining({ field: 'age', i18nKey: 'validation.required' }),
     );
   });
 
@@ -83,7 +83,10 @@ describe('ValidationEngine', () => {
     };
     const result = engine.validate(schema, data);
     expect(result).toContainEqual(
-      expect.objectContaining({ field: 'fullName', i18nKey: 'validation.min_length' })
+      expect.objectContaining({
+        field: 'fullName',
+        i18nKey: 'validation.min_length',
+      }),
     );
   });
 
@@ -94,7 +97,10 @@ describe('ValidationEngine', () => {
     };
     const result = engine.validate(schema, data);
     expect(result).toContainEqual(
-      expect.objectContaining({ field: 'age', i18nKey: 'validation.type_number' })
+      expect.objectContaining({
+        field: 'age',
+        i18nKey: 'validation.type_number',
+      }),
     );
   });
 
@@ -106,7 +112,10 @@ describe('ValidationEngine', () => {
     };
     const result = engine.validate(schema, data);
     expect(result).toContainEqual(
-      expect.objectContaining({ field: 'birthday', i18nKey: 'validation.type_date' })
+      expect.objectContaining({
+        field: 'birthday',
+        i18nKey: 'validation.type_date',
+      }),
     );
   });
 
@@ -120,7 +129,10 @@ describe('ValidationEngine', () => {
     };
     const result = engine.validate(schema, data);
     expect(result).toContainEqual(
-      expect.objectContaining({ field: 'contractDate', i18nKey: 'validation.date_after_field' })
+      expect.objectContaining({
+        field: 'contractDate',
+        i18nKey: 'validation.date_after_field',
+      }),
     );
   });
 
@@ -134,7 +146,10 @@ describe('ValidationEngine', () => {
     };
     const result = engine.validate(schema, data);
     expect(result).toContainEqual(
-      expect.objectContaining({ field: 'department', i18nKey: 'validation.invalid_option' })
+      expect.objectContaining({
+        field: 'department',
+        i18nKey: 'validation.invalid_option',
+      }),
     );
   });
 
@@ -153,26 +168,42 @@ describe('ValidationEngine', () => {
     };
     const result = engine.validate(schema, data);
     expect(result).toContainEqual(
-      expect.objectContaining({ field: 'attachment', i18nKey: 'validation.file_type_not_allowed' })
+      expect.objectContaining({
+        field: 'attachment',
+        i18nKey: 'validation.file_type_not_allowed',
+      }),
     );
   });
 
   it('should reject unsafe regex patterns (ReDoS)', () => {
     const regexSchema: FormSchema = {
       fields: [
-        { key: 'input', label: 'Input', type: 'text', rules: { regex: '(a+)+$' } },
+        {
+          key: 'input',
+          label: 'Input',
+          type: 'text',
+          rules: { regex: '(a+)+$' },
+        },
       ],
     };
     const result = engine.validate(regexSchema, { input: 'aaaaaa' });
     expect(result).toContainEqual(
-      expect.objectContaining({ field: 'input', i18nKey: 'validation.unsafe_pattern' }),
+      expect.objectContaining({
+        field: 'input',
+        i18nKey: 'validation.unsafe_pattern',
+      }),
     );
   });
 
   it('should validate safe regex patterns normally', () => {
     const regexSchema: FormSchema = {
       fields: [
-        { key: 'code', label: 'Code', type: 'text', rules: { regex: '^[A-Z]{3}-\\d{4}$' } },
+        {
+          key: 'code',
+          label: 'Code',
+          type: 'text',
+          rules: { regex: '^[A-Z]{3}-\\d{4}$' },
+        },
       ],
     };
     const pass = engine.validate(regexSchema, { code: 'ABC-1234' });
@@ -187,14 +218,21 @@ describe('ValidationEngine', () => {
   it('should handle invalid regex syntax gracefully', () => {
     const regexSchema: FormSchema = {
       fields: [
-        { key: 'input', label: 'Input', type: 'text', rules: { regex: '[invalid' } },
+        {
+          key: 'input',
+          label: 'Input',
+          type: 'text',
+          rules: { regex: '[invalid' },
+        },
       ],
     };
     const result = engine.validate(regexSchema, { input: 'test' });
     expect(result).toContainEqual(
       expect.objectContaining({
         field: 'input',
-        i18nKey: expect.stringMatching(/validation\.(unsafe_pattern|invalid_pattern)/),
+        i18nKey: expect.stringMatching(
+          /validation\.(unsafe_pattern|invalid_pattern)/,
+        ),
       }),
     );
   });
@@ -214,7 +252,10 @@ describe('ValidationEngine', () => {
     };
     const result = engine.validate(schema, data);
     expect(result).toContainEqual(
-      expect.objectContaining({ field: 'attachment', i18nKey: 'validation.file_too_large' })
+      expect.objectContaining({
+        field: 'attachment',
+        i18nKey: 'validation.file_too_large',
+      }),
     );
   });
 });

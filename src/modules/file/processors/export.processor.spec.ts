@@ -32,7 +32,9 @@ describe('ExportProcessor', () => {
       emit: jest.fn(),
     };
 
-    processor = new ExportProcessor(prisma, eventEmitter, { uploadExport: jest.fn() } as any);
+    processor = new ExportProcessor(prisma, eventEmitter, {
+      uploadExport: jest.fn(),
+    } as any);
   });
 
   it('process updates job status and emits completion', async () => {
@@ -58,9 +60,12 @@ describe('ExportProcessor', () => {
         data: expect.objectContaining({ status: JobStatus.DONE }),
       }),
     );
-    expect(eventEmitter.emit).toHaveBeenCalledWith('job.progress', expect.objectContaining({
-      jobId: 'job-1',
-    }));
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      'job.progress',
+      expect.objectContaining({
+        jobId: 'job-1',
+      }),
+    );
     expect(result.filepath).toContain('exports');
     expect(result.filepath).toContain('.xlsx');
   });

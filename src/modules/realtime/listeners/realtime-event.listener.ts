@@ -15,13 +15,17 @@ export class RealtimeEventListener {
 
   @OnEvent('notification.created')
   handleNotificationCreated(payload: NotificationCreatedPayload) {
-    this.logger.log(`Received internal event "notification.created" for user: ${payload.userId}`);
+    this.logger.log(
+      `Received internal event "notification.created" for user: ${payload.userId}`,
+    );
     this.realtimeGateway.sendToUser(payload.userId, 'notification', payload);
   }
 
   @OnEvent('job.progress')
   handleJobProgress(payload: JobProgressPayload) {
-    this.logger.log(`Received internal event "job.progress" for job ${payload.jobId} -> progress: ${payload.progress}%`);
+    this.logger.log(
+      `Received internal event "job.progress" for job ${payload.jobId} -> progress: ${payload.progress}%`,
+    );
     this.realtimeGateway.sendToUser(payload.userId, 'job.progress', {
       jobId: payload.jobId,
       progress: payload.progress,
@@ -30,7 +34,9 @@ export class RealtimeEventListener {
 
   @OnEvent('job.completed')
   handleJobCompleted(payload: JobCompletedPayload) {
-    this.logger.log(`Received internal event "job.completed" for job ${payload.jobId} -> status: ${payload.status}`);
+    this.logger.log(
+      `Received internal event "job.completed" for job ${payload.jobId} -> status: ${payload.status}`,
+    );
     this.realtimeGateway.sendToUser(payload.userId, 'job.completed', {
       jobId: payload.jobId,
       status: payload.status,

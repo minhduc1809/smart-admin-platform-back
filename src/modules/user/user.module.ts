@@ -6,7 +6,12 @@ import { UsersAdminController } from './users-admin.controller';
 import { UserService } from './user.service';
 
 @Module({
-  controllers: [UserController, UsersAdminController, RolesController, PermissionsController],
-  providers: [UserService]
+  controllers: [
+    UserController,
+    UsersAdminController,
+    RolesController,
+    PermissionsController,
+  ],
+  providers: [UserService],
 })
 export class UserModule {}

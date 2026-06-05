@@ -15,7 +15,10 @@ const MAGIC_SIGNATURES: Array<{ mime: string; bytes: number[] }> = [
   { mime: 'application/pdf', bytes: [0x25, 0x50, 0x44, 0x46] },
   { mime: 'application/msword', bytes: [0xd0, 0xcf, 0x11, 0xe0] },
   // DOCX/XLSX/PPTX are all ZIP-based (PK header)
-  { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', bytes: [0x50, 0x4b, 0x03, 0x04] },
+  {
+    mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    bytes: [0x50, 0x4b, 0x03, 0x04],
+  },
 ];
 
 export async function validateFileMagicBytes(
@@ -29,7 +32,9 @@ export async function validateFileMagicBytes(
 
     // Try file-type library (ESM — dynamic import)
     try {
-      const { fileTypeFromBuffer } = await (Function('return import("file-type")')() as Promise<typeof import('file-type')>);
+      const { fileTypeFromBuffer } = await (Function(
+        'return import("file-type")',
+      )() as Promise<typeof import('file-type')>);
       const detected = await fileTypeFromBuffer(buffer);
 
       if (detected) {

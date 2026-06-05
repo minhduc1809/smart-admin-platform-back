@@ -32,9 +32,14 @@ export class AuditLogService {
           ipAddress: payload.ipAddress || null,
         },
       });
-      this.logger.debug(`Audit log recorded for ${payload.targetModel} [${payload.action}] by ${payload.actorId}`);
+      this.logger.debug(
+        `Audit log recorded for ${payload.targetModel} [${payload.action}] by ${payload.actorId}`,
+      );
     } catch (error: any) {
-      this.logger.error(`Failed to record audit log: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to record audit log: ${error.message}`,
+        error.stack,
+      );
     }
   }
 }

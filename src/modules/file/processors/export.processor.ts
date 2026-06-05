@@ -57,7 +57,7 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
       if (formId) {
         whereClause.formId = formId;
       }
-      
+
       if (fromDate || toDate) {
         whereClause.createdAt = {};
         if (fromDate) whereClause.createdAt.gte = new Date(fromDate);
@@ -66,7 +66,7 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
 
       const submissions = await this.prisma.submission.findMany({
         where: whereClause,
-        include: { 
+        include: {
           user: true,
           form: true,
         },
@@ -90,7 +90,7 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
         { header: 'Dữ liệu', key: 'data', width: 50 },
       ];
 
-      submissions.forEach(s => {
+      submissions.forEach((s) => {
         sheet.addRow({
           formName: s.form.name,
           email: s.user.email,
@@ -112,7 +112,10 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
       // Build meaningful filename: export-{formName}-{timestamp}
       let formName = 'all';
       if (formId) {
-        const form = await this.prisma.form.findUnique({ where: { id: formId }, select: { name: true } });
+        const form = await this.prisma.form.findUnique({
+          where: { id: formId },
+          select: { name: true },
+        });
         if (form) {
           formName = form.name
             .toLowerCase()
@@ -126,10 +129,16 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
 
       let fileUrl: string;
       try {
-        const uploadResult = await this.cloudinaryService.uploadExport(buffer, filename);
+        const uploadResult = await this.cloudinaryService.uploadExport(
+          buffer,
+          filename,
+        );
         fileUrl = uploadResult.url;
       } catch {
-        const localPath = path.join('exports', `${filename}-${Date.now()}.xlsx`);
+        const localPath = path.join(
+          'exports',
+          `${filename}-${Date.now()}.xlsx`,
+        );
         const fullPath = path.join(process.cwd(), localPath);
         await workbook.xlsx.writeFile(fullPath);
         fileUrl = localPath;
@@ -147,7 +156,12 @@ export class ExportProcessor extends WorkerHost implements OnModuleInit {
       await job.updateProgress(100);
       this.eventEmitter.emit('job.progress', { jobId, progress: 100, userId });
 
-      this.eventEmitter.emit('job.completed', { jobId, status: 'DONE', userId, filepath: fileUrl });
+      this.eventEmitter.emit('job.completed', {
+        jobId,
+        status: 'DONE',
+        userId,
+        filepath: fileUrl,
+      });
 
       return { filepath: fileUrl };
     } catch (error: any) {

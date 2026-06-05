@@ -11,9 +11,12 @@ export class FormService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateFormDto) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tenantId: true } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { tenantId: true },
+    });
     if (!user) throw new NotFoundException('User not found');
-    
+
     return this.prisma.form.create({
       data: {
         tenantId: user.tenantId,
@@ -40,13 +43,16 @@ export class FormService {
     const page = dto.page ?? 1;
     const limit = dto.limit ?? 10;
 
-    const condition = dto.condition && typeof dto.condition === 'object' ? dto.condition : {};
+    const condition =
+      dto.condition && typeof dto.condition === 'object' ? dto.condition : {};
     const filters = Array.isArray(dto.filters) ? dto.filters : [];
 
     const where = FilterUtil.buildPrismaWhere(condition, filters);
-    
+
     // Default sorting if not provided
-    const orderBy = dto.sort ? this.normalizeSort(dto.sort) : { createdAt: 'desc' };
+    const orderBy = dto.sort
+      ? this.normalizeSort(dto.sort)
+      : { createdAt: 'desc' };
 
     const { result, total } = await this.prisma.paginate(
       'form',

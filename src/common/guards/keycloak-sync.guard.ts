@@ -38,7 +38,10 @@ export class KeycloakSyncGuard implements CanActivate {
       });
     } else {
       // Sync fields
-      if (dbUser.email !== tokenUser.email || dbUser.username !== tokenUser.preferred_username) {
+      if (
+        dbUser.email !== tokenUser.email ||
+        dbUser.username !== tokenUser.preferred_username
+      ) {
         dbUser = await this.prisma.user.update({
           where: { id: dbUser.id },
           data: {

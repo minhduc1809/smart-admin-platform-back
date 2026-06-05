@@ -41,23 +41,29 @@ export class RealtimeGateway
       }
 
       if (!token) {
-        this.logger.warn(`Connection rejected: No token provided. Client ID: ${client.id}`);
+        this.logger.warn(
+          `Connection rejected: No token provided. Client ID: ${client.id}`,
+        );
         client.disconnect(true);
         return;
       }
 
       // 2. Verify JWT token
-      const secret = this.configService.get<string>('JWT_ACCESS_SECRET') || process.env.JWT_ACCESS_SECRET;
+      const secret =
+        this.configService.get<string>('JWT_ACCESS_SECRET') ||
+        process.env.JWT_ACCESS_SECRET;
       if (!secret) {
         this.logger.error('JWT_ACCESS_SECRET is not configured');
         client.disconnect(true);
         return;
       }
       const payload = this.jwtService.verify(token, { secret });
-      
+
       const userId = payload.sub;
       if (!userId) {
-        this.logger.warn(`Connection rejected: Invalid token payload. Client ID: ${client.id}`);
+        this.logger.warn(
+          `Connection rejected: Invalid token payload. Client ID: ${client.id}`,
+        );
         client.disconnect(true);
         return;
       }
@@ -65,15 +71,19 @@ export class RealtimeGateway
       // 3. Join Socket to a Room named exactly as the user's ID
       client.data.userId = userId;
       client.data.role = payload.role;
-      
+
       client.join(userId);
 
-      this.logger.log(`Client connected: User ID ${userId} (Socket ID: ${client.id}) joined room: ${userId}`);
-      
+      this.logger.log(
+        `Client connected: User ID ${userId} (Socket ID: ${client.id}) joined room: ${userId}`,
+      );
+
       // Emit welcome event
       client.emit('connected', { userId, status: 'OK' });
     } catch (error: any) {
-      this.logger.error(`Connection authentication failed: ${error.message}. Client ID: ${client.id}`);
+      this.logger.error(
+        `Connection authentication failed: ${error.message}. Client ID: ${client.id}`,
+      );
       client.disconnect(true);
     }
   }
@@ -81,7 +91,9 @@ export class RealtimeGateway
   handleDisconnect(client: Socket) {
     const userId = client.data.userId;
     if (userId) {
-      this.logger.log(`Client disconnected: User ID ${userId} (Socket ID: ${client.id}) left room: ${userId}`);
+      this.logger.log(
+        `Client disconnected: User ID ${userId} (Socket ID: ${client.id}) left room: ${userId}`,
+      );
     }
   }
 

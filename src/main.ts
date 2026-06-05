@@ -38,9 +38,8 @@ async function bootstrap() {
 
   // 5. Config CORS
   app.enableCors({
-    origin: process.env.NODE_ENV === 'production'
-      ? process.env.FRONTEND_URL
-      : true,
+    origin:
+      process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL : true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: false,
   });

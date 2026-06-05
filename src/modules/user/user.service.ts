@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Role, Prisma } from '@prisma/client';
@@ -19,6 +23,7 @@ export class UserService {
     const existing = await this.prisma.user.findFirst({
       where: {
         tenantId,
+        deletedAt: null,
         OR: [{ email }, { username }],
       },
     });
@@ -37,6 +42,7 @@ export class UserService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         role: dto.role || Role.USER,
+        passwordChangeRequired: true,
       },
       select: {
         id: true,
@@ -46,6 +52,7 @@ export class UserService {
         firstName: true,
         lastName: true,
         isActive: true,
+        passwordChangeRequired: true,
         createdAt: true,
       },
     });
@@ -132,7 +139,8 @@ export class UserService {
     const page = Math.max(1, dto.page ?? 1);
     const limit = Math.max(1, dto.limit ?? 10);
 
-    const condition = dto.condition && typeof dto.condition === 'object' ? dto.condition : {};
+    const condition =
+      dto.condition && typeof dto.condition === 'object' ? dto.condition : {};
     const filters = Array.isArray(dto.filters) ? dto.filters : [];
 
     const where = FilterUtil.buildPrismaWhere(condition, filters);
@@ -192,8 +200,13 @@ export class UserService {
   }
 
   private buildOrderByFromSortInput(
-    sort?: string | { field?: string; order?: string } | Array<{ field?: string; order?: string }>,
-  ): Prisma.UserOrderByWithRelationInput | Prisma.UserOrderByWithRelationInput[] {
+    sort?:
+      | string
+      | { field?: string; order?: string }
+      | Array<{ field?: string; order?: string }>,
+  ):
+    | Prisma.UserOrderByWithRelationInput
+    | Prisma.UserOrderByWithRelationInput[] {
     if (!sort) {
       return { createdAt: 'desc' };
     }
@@ -213,9 +226,10 @@ export class UserService {
     return order ?? { createdAt: 'desc' };
   }
 
-  private normalizeSortItem(
-    item?: { field?: string; order?: string },
-  ): Prisma.UserOrderByWithRelationInput | null {
+  private normalizeSortItem(item?: {
+    field?: string;
+    order?: string;
+  }): Prisma.UserOrderByWithRelationInput | null {
     const field = item?.field?.trim();
     const direction = item?.order?.trim().toLowerCase();
 
@@ -252,6 +266,7 @@ export class UserService {
         lastName: true,
         picture: true,
         isActive: true,
+        passwordChangeRequired: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -274,6 +289,7 @@ export class UserService {
       const existing = await this.prisma.user.findFirst({
         where: {
           id: { not: id },
+          deletedAt: null,
           email: data.email,
         },
       });
@@ -303,6 +319,7 @@ export class UserService {
         lastName: true,
         picture: true,
         isActive: true,
+        passwordChangeRequired: true,
         createdAt: true,
         updatedAt: true,
       },

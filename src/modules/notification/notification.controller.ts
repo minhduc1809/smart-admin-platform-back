@@ -1,4 +1,11 @@
-import { Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -38,10 +45,7 @@ export class NotificationController {
 
   @Patch(':id/read')
   @ApiOperation({ summary: 'Đánh dấu một thông báo là đã đọc' })
-  markAsRead(
-    @CurrentUser('id') userId: string,
-    @Param('id') id: string,
-  ) {
+  markAsRead(@CurrentUser('id') userId: string, @Param('id') id: string) {
     return this.notificationService.markAsRead(userId, id);
   }
 
@@ -51,4 +55,3 @@ export class NotificationController {
     return this.notificationService.markAllAsRead(userId);
   }
 }
-

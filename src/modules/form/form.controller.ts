@@ -31,7 +31,10 @@ export class FormController {
   @Post()
   @Roles(Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Create a new form' })
-  create(@CurrentUser('id') userId: string, @Body() createFormDto: CreateFormDto) {
+  create(
+    @CurrentUser('id') userId: string,
+    @Body() createFormDto: CreateFormDto,
+  ) {
     return this.formService.create(userId, createFormDto);
   }
 

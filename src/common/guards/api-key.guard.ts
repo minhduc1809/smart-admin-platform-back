@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ClsService } from 'nestjs-cls';
 import * as crypto from 'crypto';
@@ -18,7 +23,10 @@ export class ApiKeyGuard implements CanActivate {
       throw new UnauthorizedException('API Key is missing');
     }
 
-    const keyHash = crypto.createHash('sha256').update(apiKeyHeader).digest('hex');
+    const keyHash = crypto
+      .createHash('sha256')
+      .update(apiKeyHeader)
+      .digest('hex');
 
     // Bypass RLS tenantId injection because we don't have tenantId yet
     const apiKey = await this.prisma.apiKey.findFirst({
@@ -37,13 +45,13 @@ export class ApiKeyGuard implements CanActivate {
     this.cls.set('tenantId', apiKey.tenantId);
     this.cls.set('userId', 'API_KEY_SYSTEM');
     this.cls.set('apiKeyScopes', apiKey.scopes);
-    
+
     // Set user object on request
     request.user = {
       id: 'API_KEY_SYSTEM',
       tenantId: apiKey.tenantId,
       role: 'API_CLIENT',
-      scopes: apiKey.scopes
+      scopes: apiKey.scopes,
     };
 
     return true;

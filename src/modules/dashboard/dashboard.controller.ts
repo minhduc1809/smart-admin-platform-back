@@ -47,18 +47,13 @@ export class DashboardController {
   @Roles(Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Top forms được dùng nhiều nhất' })
   getTopForms(@Query('limit') limit?: string) {
-    return this.dashboardService.getTopForms(
-      limit ? parseInt(limit, 10) : 5,
-    );
+    return this.dashboardService.getTopForms(limit ? parseInt(limit, 10) : 5);
   }
 
   @Get('sla-metrics')
   @Roles(Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'SLA compliance metrics per workflow step' })
   getSlaMetrics(@Query('days') days?: string) {
-    return this.dashboardService.getSlaMetrics(
-      days ? parseInt(days, 10) : 30,
-    );
+    return this.dashboardService.getSlaMetrics(days ? parseInt(days, 10) : 30);
   }
 }
-
