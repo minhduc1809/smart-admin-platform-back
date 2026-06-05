@@ -6,7 +6,12 @@
     "TOKEN_EXPIRED": "Token has expired",
     "UNAUTHORIZED": "Unauthorized access",
     "LOGOUT_SUCCESS": "Logged out successfully",
-    "REGISTER_SUCCESS": "Registered successfully"
+    "REGISTER_SUCCESS": "Registered successfully",
+    "FORGOT_PASSWORD_SENT": "A reset link has been sent to your email if it exists in the system.",
+    "INVALID_OR_EXPIRED_RESET_TOKEN": "Reset token is invalid or has expired.",
+    "PASSWORD_RESET_SUCCESS": "Password reset successfully. Please log in again.",
+    "PASSWORD_CHANGE_SUCCESS": "Password changed successfully.",
+    "INCORRECT_OLD_PASSWORD": "Old password is incorrect"
   },
   "user": {
     "NOT_FOUND": "User not found",

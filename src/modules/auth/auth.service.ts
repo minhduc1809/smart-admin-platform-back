@@ -2,6 +2,8 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -9,7 +11,8 @@ import { RegisterDto } from './dto/register.dto';
 import type { StringValue } from 'ms';
 import ms from 'ms';
 import * as bcrypt from 'bcrypt';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomBytes, createHash } from 'crypto';
+import { MailService } from '../mail/mail.service';
 
 interface JwtPayload {
   sub: string;
@@ -29,6 +32,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private mailService: MailService,
   ) {
     const isProd = process.env.NODE_ENV === 'production';
 
@@ -131,6 +135,7 @@ export class AuthService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         role: 'USER',
+        passwordChangeRequired: false,
       } as any,
     });
 
@@ -343,9 +348,105 @@ export class AuthService {
         lastName: true,
         picture: true,
         isActive: true,
+        passwordChangeRequired: true,
         createdAt: true,
       },
     });
     return user;
+  }
+
+  async forgotPassword(email: string) {
+    const emailLower = email.toLowerCase();
+    const user = await this.prisma.user.findFirst({
+      where: { email: emailLower, deletedAt: null },
+    });
+
+    if (!user || !user.isActive) {
+      return { success: true, message: 'auth.FORGOT_PASSWORD_SENT' };
+    }
+
+    const token = randomBytes(32).toString('hex');
+    const hash = createHash('sha256').update(token).digest('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetHash: hash,
+        passwordResetExpiresAt: expiresAt,
+      },
+    });
+
+    await this.mailService.sendResetPasswordEmail(user.email, token, user.tenantId);
+
+    return { success: true, message: 'auth.FORGOT_PASSWORD_SENT' };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const hash = createHash('sha256').update(token).digest('hex');
+    const user = await this.prisma.user.findFirst({
+      where: {
+        passwordResetHash: hash,
+        passwordResetExpiresAt: { gt: new Date() },
+        deletedAt: null,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('auth.INVALID_OR_EXPIRED_RESET_TOKEN');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash: hashedPassword,
+          passwordResetHash: null,
+          passwordResetExpiresAt: null,
+          passwordChangeRequired: false,
+        },
+      });
+
+      await tx.refreshToken.deleteMany({
+        where: { userId: user.id },
+      });
+    });
+
+    return { success: true, message: 'auth.PASSWORD_RESET_SUCCESS' };
+  }
+
+  async changePassword(userId: string, oldPass: string, newPass: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
+    });
+
+    if (!user || !user.passwordHash) {
+      throw new NotFoundException('user.NOT_FOUND');
+    }
+
+    const isValid = await bcrypt.compare(oldPass, user.passwordHash);
+    if (!isValid) {
+      throw new BadRequestException('auth.INCORRECT_OLD_PASSWORD');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPass, 10);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash: hashedPassword,
+          passwordChangeRequired: false,
+        },
+      });
+
+      await tx.refreshToken.deleteMany({
+        where: { userId: user.id },
+      });
+    });
+
+    return { success: true, message: 'auth.PASSWORD_CHANGE_SUCCESS' };
   }
 }

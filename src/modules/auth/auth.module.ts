@@ -6,12 +6,14 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { KeycloakStrategy } from './strategies/keycloak.strategy';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
     PrismaModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({}),
+    MailModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, KeycloakStrategy],

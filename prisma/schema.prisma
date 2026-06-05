@@ -90,6 +90,9 @@ model User {
   lastName     String?
   picture      String?
   isActive     Boolean   @default(true)
+  passwordResetHash String? @unique @map("password_reset_hash")
+  passwordResetExpiresAt DateTime? @map("password_reset_expires_at")
+  passwordChangeRequired Boolean @default(false) @map("password_change_required")
 
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
