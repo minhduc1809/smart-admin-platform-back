@@ -47,7 +47,7 @@
     "file-type": "^22.0.1",
     "gitnexus": "^1.6.3",
     "jose": "^5.10.0",
-    "jwks-rsa": "^4.0.1",
+    "jwks-rsa": "^3.1.0",
     "lodash": "^4.18.1",
     "multer": "^2.1.1",
     "nestjs-cls": "^4.3.0",
@@ -59,7 +59,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "safe-regex2": "^5.1.1",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "nodemailer": "^6.9.13"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -75,6 +76,7 @@
     "@types/multer": "^2.1.0",
     "@types/node": "^22.10.7",
     "@types/passport-jwt": "^4.0.1",
+    "@types/nodemailer": "^6.4.14",
     "@types/supertest": "^6.0.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
