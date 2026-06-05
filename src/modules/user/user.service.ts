@@ -42,6 +42,7 @@ export class UserService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         role: dto.role || Role.USER,
+        passwordChangeRequired: true,
       },
       select: {
         id: true,
@@ -51,6 +52,7 @@ export class UserService {
         firstName: true,
         lastName: true,
         isActive: true,
+        passwordChangeRequired: true,
         createdAt: true,
       },
     });
@@ -264,6 +266,7 @@ export class UserService {
         lastName: true,
         picture: true,
         isActive: true,
+        passwordChangeRequired: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -316,6 +319,7 @@ export class UserService {
         lastName: true,
         picture: true,
         isActive: true,
+        passwordChangeRequired: true,
         createdAt: true,
         updatedAt: true,
       },
