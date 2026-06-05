@@ -153,6 +153,34 @@ describe('ValidationEngine', () => {
     );
   });
 
+  it('should accept select value matching object-shaped options ({label, value})', () => {
+    const objectOptionSchema: FormSchema = {
+      fields: [
+        {
+          key: 'loaiNghi',
+          label: 'Loại nghỉ phép',
+          type: 'select',
+          rules: { required: true },
+          options: [
+            { label: 'Nghỉ phép năm', value: 'phep_nam' },
+            { label: 'Nghỉ ốm (có BHXH)', value: 'nghi_om' },
+          ],
+        },
+      ],
+    };
+    expect(
+      engine.validate(objectOptionSchema, { loaiNghi: 'phep_nam' }),
+    ).toHaveLength(0);
+    expect(
+      engine.validate(objectOptionSchema, { loaiNghi: 'khong_ton_tai' }),
+    ).toContainEqual(
+      expect.objectContaining({
+        field: 'loaiNghi',
+        i18nKey: 'validation.invalid_option',
+      }),
+    );
+  });
+
   it('should return error if file type is not allowed', () => {
     const data = {
       fullName: 'John Doe',
