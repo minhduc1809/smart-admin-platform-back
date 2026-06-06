@@ -6,18 +6,18 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getSummary() {
+  async getSummary(tenantId: string) {
     const [total, pending, approved, rejected] = await this.prisma.$transaction(
       [
-        this.prisma.submission.count(),
+        this.prisma.submission.count({ where: { tenantId } }),
         this.prisma.submission.count({
-          where: { status: SubmissionStatus.UNDER_REVIEW },
+          where: { tenantId, status: SubmissionStatus.UNDER_REVIEW },
         }),
         this.prisma.submission.count({
-          where: { status: SubmissionStatus.APPROVED },
+          where: { tenantId, status: SubmissionStatus.APPROVED },
         }),
         this.prisma.submission.count({
-          where: { status: SubmissionStatus.REJECTED },
+          where: { tenantId, status: SubmissionStatus.REJECTED },
         }),
       ],
     );
@@ -25,18 +25,32 @@ export class DashboardService {
     return { total, pending, approved, rejected };
   }
 
-  async getMySummary(userId: string) {
+  async getMySummary(userId: string, tenantId: string) {
     const [total, pending, approved, rejected] = await this.prisma.$transaction(
       [
-        this.prisma.submission.count({ where: { submittedBy: userId } }),
         this.prisma.submission.count({
-          where: { submittedBy: userId, status: SubmissionStatus.UNDER_REVIEW },
+          where: { tenantId, submittedBy: userId },
         }),
         this.prisma.submission.count({
-          where: { submittedBy: userId, status: SubmissionStatus.APPROVED },
+          where: {
+            tenantId,
+            submittedBy: userId,
+            status: SubmissionStatus.UNDER_REVIEW,
+          },
         }),
         this.prisma.submission.count({
-          where: { submittedBy: userId, status: SubmissionStatus.REJECTED },
+          where: {
+            tenantId,
+            submittedBy: userId,
+            status: SubmissionStatus.APPROVED,
+          },
+        }),
+        this.prisma.submission.count({
+          where: {
+            tenantId,
+            submittedBy: userId,
+            status: SubmissionStatus.REJECTED,
+          },
         }),
       ],
     );
@@ -44,9 +58,10 @@ export class DashboardService {
     return { total, pending, approved, rejected };
   }
 
-  async getSubmissionsByStatus() {
+  async getSubmissionsByStatus(tenantId: string) {
     const groups = await this.prisma.submission.groupBy({
       by: ['status'],
+      where: { tenantId },
       _count: { id: true },
     });
 
@@ -56,7 +71,7 @@ export class DashboardService {
     }));
   }
 
-  async getSubmissionsByDay(days: number = 30) {
+  async getSubmissionsByDay(tenantId: string, days: number = 30) {
     const clampedDays = Math.min(Math.max(days, 1), 365);
     const from = new Date();
     from.setDate(from.getDate() - clampedDays);
@@ -66,7 +81,7 @@ export class DashboardService {
     >`
       SELECT DATE(created_at) AS date, COUNT(*)::int AS count
       FROM submissions
-      WHERE created_at >= ${from}
+      WHERE created_at >= ${from} AND tenant_id = ${tenantId}
       GROUP BY DATE(created_at)
       ORDER BY DATE(created_at) ASC
     `;
@@ -77,10 +92,11 @@ export class DashboardService {
     }));
   }
 
-  async getTopForms(limit: number = 5) {
+  async getTopForms(tenantId: string, limit: number = 5) {
     const clampedLimit = Math.min(Math.max(limit, 1), 100);
     const groups = await this.prisma.submission.groupBy({
       by: ['formId'],
+      where: { tenantId },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
       take: clampedLimit,
@@ -99,13 +115,14 @@ export class DashboardService {
     }));
   }
 
-  async getSlaMetrics(days: number = 30) {
+  async getSlaMetrics(tenantId: string, days: number = 30) {
     const clampedDays = Math.min(Math.max(days, 1), 365);
     const from = new Date();
     from.setDate(from.getDate() - clampedDays);
 
     const instances = await this.prisma.workflowInstance.findMany({
       where: {
+        tenantId,
         status: {
           in: [WorkflowInstanceStatus.ACTIVE, WorkflowInstanceStatus.COMPLETED],
         },

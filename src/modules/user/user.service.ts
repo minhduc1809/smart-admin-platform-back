@@ -29,8 +29,14 @@ export class UserService {
     });
 
     if (existing) {
-      throw new ConflictException('user.USERNAME_EXISTS');
+      throw new ConflictException(
+        existing.email === email ? 'user.EMAIL_EXISTS' : 'user.USERNAME_EXISTS',
+      );
     }
+
+    // Soft-deleted users keep their row, so the (tenantId, email/username)
+    // unique constraints would still block re-creation — release their keys first
+    await this.releaseDeletedUserKeys(tenantId, email, username);
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
@@ -327,11 +333,50 @@ export class UserService {
   }
 
   async remove(id: string) {
-    await this.getProfile(id); // Check existence
+    const user = await this.getProfile(id); // Check existence
     return this.prisma.user.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: {
+        deletedAt: new Date(),
+        isActive: false,
+        keycloakId: null,
+        // Free the (tenantId, email/username) unique keys so the
+        // email/username can be reused by a new user
+        email: `${user.email}.deleted.${id}`,
+        username: `${user.username}.deleted.${id}`,
+      },
     });
+  }
+
+  /**
+   * Renames email/username of already soft-deleted users that still hold
+   * the requested keys, so the DB unique constraints don't reject the new
+   * user. Handles rows deleted before remove() started releasing keys.
+   */
+  private async releaseDeletedUserKeys(
+    tenantId: string,
+    email: string,
+    username: string,
+  ) {
+    const deletedUsers = await this.prisma.user.findMany({
+      where: {
+        tenantId,
+        deletedAt: { not: null },
+        OR: [{ email }, { username }],
+      },
+      select: { id: true, email: true, username: true },
+    });
+
+    for (const deleted of deletedUsers) {
+      await this.prisma.user.update({
+        where: { id: deleted.id },
+        data: {
+          email: `${deleted.email}.deleted.${deleted.id}`,
+          username: `${deleted.username}.deleted.${deleted.id}`,
+          keycloakId: null,
+        },
+      });
+    }
   }
 
   async assignRole(id: string, role: Role) {
