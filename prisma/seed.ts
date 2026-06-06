@@ -22,7 +22,7 @@ async function main() {
     return;
   }
 
-  const passwordHash = await bcrypt.hash('123456', 10);
+  const passwordHash = await bcrypt.hash('12345678', 10);
 
   const admin = await prisma.user.create({
     data: {
