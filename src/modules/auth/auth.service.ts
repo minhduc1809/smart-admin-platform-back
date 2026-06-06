@@ -11,7 +11,7 @@ import { RegisterDto } from './dto/register.dto';
 import type { StringValue } from 'ms';
 import ms from 'ms';
 import * as bcrypt from 'bcrypt';
-import { randomUUID, randomBytes, createHash } from 'crypto';
+import { randomUUID, randomBytes, randomInt, createHash } from 'crypto';
 import { MailService } from '../mail/mail.service';
 
 interface JwtPayload {
@@ -365,9 +365,11 @@ export class AuthService {
       return { success: true, message: 'auth.FORGOT_PASSWORD_SENT' };
     }
 
-    const token = randomBytes(32).toString('hex');
-    const hash = createHash('sha256').update(token).digest('hex');
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    // 6-digit OTP — hashed with the user id so it can only be verified
+    // together with the matching email (prevents cross-user brute force)
+    const otp = randomInt(100000, 1000000).toString();
+    const hash = createHash('sha256').update(`${user.id}:${otp}`).digest('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -377,9 +379,45 @@ export class AuthService {
       },
     });
 
-    await this.mailService.sendResetPasswordEmail(user.email, token, user.tenantId);
+    await this.mailService.sendResetOtpEmail(user.email, otp);
 
     return { success: true, message: 'auth.FORGOT_PASSWORD_SENT' };
+  }
+
+  async verifyResetOtp(email: string, otp: string) {
+    const emailLower = email.toLowerCase();
+    const user = await this.prisma.user.findFirst({
+      where: { email: emailLower, deletedAt: null },
+    });
+
+    const hash = user
+      ? createHash('sha256').update(`${user.id}:${otp}`).digest('hex')
+      : '';
+
+    if (
+      !user ||
+      !user.passwordResetHash ||
+      user.passwordResetHash !== hash ||
+      !user.passwordResetExpiresAt ||
+      user.passwordResetExpiresAt <= new Date()
+    ) {
+      throw new BadRequestException('auth.INVALID_OR_EXPIRED_OTP');
+    }
+
+    // Swap the OTP for a single-use reset token: the OTP can no longer be
+    // replayed, and resetPassword() keeps working unchanged with this token
+    const token = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetHash: tokenHash,
+        passwordResetExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      },
+    });
+
+    return { success: true, resetToken: token };
   }
 
   async resetPassword(token: string, newPassword: string) {

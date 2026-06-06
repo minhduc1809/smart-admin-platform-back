@@ -1,69 +1,70 @@
 {
   "auth": {
-    "LOGIN_SUCCESS": "Đăng nhập thành công",
-    "INVALID_CREDENTIALS": "Email hoặc mật khẩu không chính xác",
-    "INVALID_REFRESH_TOKEN": "Phiên đăng nhập không hợp lệ hoặc đã hết hạn",
-    "TOKEN_EXPIRED": "Token đã hết hạn",
-    "UNAUTHORIZED": "Không có quyền truy cập",
-    "LOGOUT_SUCCESS": "Đăng xuất thành công",
-    "REGISTER_SUCCESS": "Đăng ký thành công",
-    "FORGOT_PASSWORD_SENT": "Liên kết khôi phục mật khẩu đã được gửi đến email của bạn nếu nó tồn tại trên hệ thống.",
-    "INVALID_OR_EXPIRED_RESET_TOKEN": "Mã khôi phục mật khẩu không hợp lệ hoặc đã hết hạn.",
-    "PASSWORD_RESET_SUCCESS": "Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.",
-    "PASSWORD_CHANGE_SUCCESS": "Đổi mật khẩu thành công.",
-    "INCORRECT_OLD_PASSWORD": "Mật khẩu cũ không chính xác"
+    "LOGIN_SUCCESS": "ÄÄƒng nháº­p thÃ nh cÃ´ng",
+    "INVALID_CREDENTIALS": "Email hoáº·c máº­t kháº©u khÃ´ng chÃ­nh xÃ¡c",
+    "INVALID_REFRESH_TOKEN": "PhiÃªn Ä‘Äƒng nháº­p khÃ´ng há»£p lá»‡ hoáº·c Ä‘Ã£ háº¿t háº¡n",
+    "TOKEN_EXPIRED": "Token Ä‘Ã£ háº¿t háº¡n",
+    "UNAUTHORIZED": "KhÃ´ng cÃ³ quyá»n truy cáº­p",
+    "LOGOUT_SUCCESS": "ÄÄƒng xuáº¥t thÃ nh cÃ´ng",
+    "REGISTER_SUCCESS": "ÄÄƒng kÃ½ thÃ nh cÃ´ng",
+    "FORGOT_PASSWORD_SENT": "LiÃªn káº¿t khÃ´i phá»¥c máº­t kháº©u Ä‘Ã£ Ä‘Æ°á»£c gá»­i Ä‘áº¿n email cá»§a báº¡n náº¿u nÃ³ tá»“n táº¡i trÃªn há»‡ thá»‘ng.",
+    "INVALID_OR_EXPIRED_RESET_TOKEN": "MÃ£ khÃ´i phá»¥c máº­t kháº©u khÃ´ng há»£p lá»‡ hoáº·c Ä‘Ã£ háº¿t háº¡n.",
+    "PASSWORD_RESET_SUCCESS": "Äáº·t láº¡i máº­t kháº©u thÃ nh cÃ´ng. Vui lÃ²ng Ä‘Äƒng nháº­p láº¡i.",
+    "PASSWORD_CHANGE_SUCCESS": "Äá»•i máº­t kháº©u thÃ nh cÃ´ng.",
+    "INCORRECT_OLD_PASSWORD": "Máº­t kháº©u cÅ© khÃ´ng chÃ­nh xÃ¡c",
+    "INVALID_OR_EXPIRED_OTP": "Mã OTP không hợp lệ hoặc đã hết hạn."
   },
   "user": {
-    "NOT_FOUND": "Không tìm thấy người dùng",
-    "CREATED": "Tạo người dùng thành công",
-    "UPDATED": "Cập nhật người dùng thành công",
-    "DELETED": "Đã xóa người dùng",
-    "EMAIL_EXISTS": "Email này đã được sử dụng",
-    "USERNAME_EXISTS": "Tên đăng nhập đã tồn tại"
+    "NOT_FOUND": "KhÃ´ng tÃ¬m tháº¥y ngÆ°á»i dÃ¹ng",
+    "CREATED": "Táº¡o ngÆ°á»i dÃ¹ng thÃ nh cÃ´ng",
+    "UPDATED": "Cáº­p nháº­t ngÆ°á»i dÃ¹ng thÃ nh cÃ´ng",
+    "DELETED": "ÄÃ£ xÃ³a ngÆ°á»i dÃ¹ng",
+    "EMAIL_EXISTS": "Email nÃ y Ä‘Ã£ Ä‘Æ°á»£c sá»­ dá»¥ng",
+    "USERNAME_EXISTS": "TÃªn Ä‘Äƒng nháº­p Ä‘Ã£ tá»“n táº¡i"
   },
   "form": {
-    "NOT_FOUND": "Không tìm thấy biểu mẫu",
-    "CREATED": "Tạo biểu mẫu thành công",
-    "UPDATED": "Cập nhật biểu mẫu thành công"
+    "NOT_FOUND": "KhÃ´ng tÃ¬m tháº¥y biá»ƒu máº«u",
+    "CREATED": "Táº¡o biá»ƒu máº«u thÃ nh cÃ´ng",
+    "UPDATED": "Cáº­p nháº­t biá»ƒu máº«u thÃ nh cÃ´ng"
   },
   "submission": {
-    "NOT_FOUND": "Không tìm thấy dữ liệu đã nộp",
-    "SUBMITTED": "Nộp dữ liệu biểu mẫu thành công"
+    "NOT_FOUND": "KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u Ä‘Ã£ ná»™p",
+    "SUBMITTED": "Ná»™p dá»¯ liá»‡u biá»ƒu máº«u thÃ nh cÃ´ng"
   },
   "workflow": {
-    "INSTANCE_NOT_FOUND": "Không tìm thấy luồng xử lý",
-    "INVALID_TRANSITION": "Thao tác chuyển bước không hợp lệ",
-    "NOT_ALLOWED": "Bạn không có quyền thực hiện thao tác này",
-    "COMMENT_REQUIRED": "Vui lòng nhập lý do / ghi chú cho thao tác này"
+    "INSTANCE_NOT_FOUND": "KhÃ´ng tÃ¬m tháº¥y luá»“ng xá»­ lÃ½",
+    "INVALID_TRANSITION": "Thao tÃ¡c chuyá»ƒn bÆ°á»›c khÃ´ng há»£p lá»‡",
+    "NOT_ALLOWED": "Báº¡n khÃ´ng cÃ³ quyá»n thá»±c hiá»‡n thao tÃ¡c nÃ y",
+    "COMMENT_REQUIRED": "Vui lÃ²ng nháº­p lÃ½ do / ghi chÃº cho thao tÃ¡c nÃ y"
   },
   "file": {
-    "UPLOAD_SUCCESS": "Tải tệp lên thành công",
-    "NOT_FOUND": "Không tìm thấy tệp",
-    "TOO_LARGE": "Kích thước tệp vượt quá giới hạn cho phép",
-    "PROCESSING": "Đang xử lý tệp đồ hoạ/dữ liệu"
+    "UPLOAD_SUCCESS": "Táº£i tá»‡p lÃªn thÃ nh cÃ´ng",
+    "NOT_FOUND": "KhÃ´ng tÃ¬m tháº¥y tá»‡p",
+    "TOO_LARGE": "KÃ­ch thÆ°á»›c tá»‡p vÆ°á»£t quÃ¡ giá»›i háº¡n cho phÃ©p",
+    "PROCESSING": "Äang xá»­ lÃ½ tá»‡p Ä‘á»“ hoáº¡/dá»¯ liá»‡u"
   },
   "notification": {
-    "NOT_FOUND": "Không tìm thấy thông báo",
-    "MARK_READ_PROCESS": "Đã đánh dấu là đã đọc"
+    "NOT_FOUND": "KhÃ´ng tÃ¬m tháº¥y thÃ´ng bÃ¡o",
+    "MARK_READ_PROCESS": "ÄÃ£ Ä‘Ã¡nh dáº¥u lÃ  Ä‘Ã£ Ä‘á»c"
   },
   "validation": {
-    "required": "Trường {field} là bắt buộc",
-    "min_length": "Tối thiểu {min} ký tự",
-    "max_length": "Tối đa {max} ký tự",
-    "min_value": "Giá trị tối thiểu là {min}",
-    "max_value": "Giá trị tối đa là {max}",
-    "type_number": "Phải là số hợp lệ",
-    "type_date": "Phải là ngày hợp lệ (ISO 8601)",
-    "pattern": "Không đúng định dạng yêu cầu",
-    "date_after_field": "Phải sau ngày {refField}",
-    "invalid_option": "Giá trị không nằm trong danh sách cho phép",
-    "file_too_large": "Dung lượng tệp vượt quá {maxMb} MB",
-    "file_type_not_allowed": "Định dạng tệp không được phép"
+    "required": "TrÆ°á»ng {field} lÃ  báº¯t buá»™c",
+    "min_length": "Tá»‘i thiá»ƒu {min} kÃ½ tá»±",
+    "max_length": "Tá»‘i Ä‘a {max} kÃ½ tá»±",
+    "min_value": "GiÃ¡ trá»‹ tá»‘i thiá»ƒu lÃ  {min}",
+    "max_value": "GiÃ¡ trá»‹ tá»‘i Ä‘a lÃ  {max}",
+    "type_number": "Pháº£i lÃ  sá»‘ há»£p lá»‡",
+    "type_date": "Pháº£i lÃ  ngÃ y há»£p lá»‡ (ISO 8601)",
+    "pattern": "KhÃ´ng Ä‘Ãºng Ä‘á»‹nh dáº¡ng yÃªu cáº§u",
+    "date_after_field": "Pháº£i sau ngÃ y {refField}",
+    "invalid_option": "GiÃ¡ trá»‹ khÃ´ng náº±m trong danh sÃ¡ch cho phÃ©p",
+    "file_too_large": "Dung lÆ°á»£ng tá»‡p vÆ°á»£t quÃ¡ {maxMb} MB",
+    "file_type_not_allowed": "Äá»‹nh dáº¡ng tá»‡p khÃ´ng Ä‘Æ°á»£c phÃ©p"
   },
   "error": {
-    "INTERNAL": "Lỗi hệ thống ngoại lệ",
-    "FORBIDDEN": "Bạn bị chặn quyền truy cập vào tài nguyên này",
-    "NOT_FOUND": "Không tìm thấy tài nguyên yêu cầu",
-    "CONFLICT": "Xung đột dữ liệu hệ thống"
+    "INTERNAL": "Lá»—i há»‡ thá»‘ng ngoáº¡i lá»‡",
+    "FORBIDDEN": "Báº¡n bá»‹ cháº·n quyá»n truy cáº­p vÃ o tÃ i nguyÃªn nÃ y",
+    "NOT_FOUND": "KhÃ´ng tÃ¬m tháº¥y tÃ i nguyÃªn yÃªu cáº§u",
+    "CONFLICT": "Xung Ä‘á»™t dá»¯ liá»‡u há»‡ thá»‘ng"
   }
 }
