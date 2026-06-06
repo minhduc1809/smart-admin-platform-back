@@ -59,11 +59,14 @@
     "date_after_field": "Pháº£i sau ngÃ y {refField}",
     "invalid_option": "GiÃ¡ trá»‹ khÃ´ng náº±m trong danh sÃ¡ch cho phÃ©p",
     "file_too_large": "Dung lÆ°á»£ng tá»‡p vÆ°á»£t quÃ¡ {maxMb} MB",
-    "file_type_not_allowed": "Äá»‹nh dáº¡ng tá»‡p khÃ´ng Ä‘Æ°á»£c phÃ©p"
+    "file_type_not_allowed": "Ä á»‹nh dáº¡ng tá»‡p khÃ­ng Ä‘Æ°á»£c phÃ©p"
+  },
+  "tenant": {
+    "DOMAIN_ALREADY_EXISTS": "Tên miền đăng ký đã được sử dụng bởi tổ chức khác."
   },
   "error": {
     "INTERNAL": "Lá»—i há»‡ thá»‘ng ngoáº¡i lá»‡",
-    "FORBIDDEN": "Báº¡n bá»‹ cháº·n quyá»n truy cáº­p vÃ o tÃ i nguyÃªn nÃ y",
+    "FORBIDDEN": "Báº¡n bá»‹ cháº·n quyá» n truy cáº­p vÃ o tÃ i nguyÃªn nÃ y",
     "NOT_FOUND": "KhÃ´ng tÃ¬m tháº¥y tÃ i nguyÃªn yÃªu cáº§u",
     "CONFLICT": "Xung Ä‘á»™t dá»¯ liá»‡u há»‡ thá»‘ng"
   }

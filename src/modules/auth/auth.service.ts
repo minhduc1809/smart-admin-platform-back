@@ -13,6 +13,9 @@ import ms from 'ms';
 import * as bcrypt from 'bcrypt';
 import { randomUUID, randomBytes, randomInt, createHash } from 'crypto';
 import { MailService } from '../mail/mail.service';
+import { ClsService } from 'nestjs-cls';
+import { Role } from '@prisma/client';
+import { RegisterTenantDto } from './dto/register-tenant.dto';
 
 interface JwtPayload {
   sub: string;
@@ -33,6 +36,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private mailService: MailService,
+    private readonly cls: ClsService,
   ) {
     const isProd = process.env.NODE_ENV === 'production';
 
@@ -142,6 +146,67 @@ export class AuthService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, ...result } = user;
     return result;
+  }
+
+  async registerTenant(dto: RegisterTenantDto) {
+    const domain = dto.domain.toLowerCase().trim();
+    const adminEmail = dto.adminEmail.toLowerCase().trim();
+    const adminUsername = dto.adminUsername.toLowerCase().trim();
+
+    // Check domain uniqueness
+    const existingTenant = await this.prisma.tenant.findUnique({
+      where: { domain },
+    });
+
+    if (existingTenant) {
+      throw new ConflictException('tenant.DOMAIN_ALREADY_EXISTS');
+    }
+
+    // Temporarily clear tenantId context to prevent middleware interference
+    const previousTenantId = this.cls.get('tenantId');
+    this.cls.set('tenantId', undefined);
+
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        // 1. Create Tenant
+        const tenant = await tx.tenant.create({
+          data: {
+            name: dto.companyName,
+            domain,
+            isActive: true,
+          },
+        });
+
+        // 2. Create Admin User
+        const hashedPassword = await bcrypt.hash(dto.adminPassword, 10);
+        const admin = await tx.user.create({
+          data: {
+            tenantId: tenant.id,
+            email: adminEmail,
+            username: adminUsername,
+            passwordHash: hashedPassword,
+            role: Role.ADMIN,
+            firstName: dto.adminFirstName,
+            lastName: dto.adminLastName,
+            isActive: true,
+            passwordChangeRequired: false,
+          },
+        });
+
+        return { tenant, admin };
+      });
+
+      // Remove passwordHash from returned admin
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { passwordHash, ...safeAdmin } = result.admin;
+      return {
+        success: true,
+        tenant: result.tenant,
+        admin: safeAdmin,
+      };
+    } finally {
+      this.cls.set('tenantId', previousTenantId);
+    }
   }
 
   async refreshToken(token: string) {

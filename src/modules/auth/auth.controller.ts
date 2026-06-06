@@ -22,6 +22,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { RegisterTenantDto } from './dto/register-tenant.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -97,6 +98,15 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Returns user profile' })
   getMe(@CurrentUser() user: any) {
     return this.authService.getMe(user.id, user.keycloakId);
+  }
+
+  @Public()
+  @Post('register-tenant')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Register a new tenant and its admin user' })
+  @ApiResponse({ status: 201, description: 'Tenant and admin user registered successfully' })
+  registerTenant(@Body() dto: RegisterTenantDto) {
+    return this.authService.registerTenant(dto);
   }
 
   @Public()
