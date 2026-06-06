@@ -60,6 +60,9 @@
     "file_too_large": "File exceeds {maxMb} MB",
     "file_type_not_allowed": "File type is not allowed"
   },
+  "tenant": {
+    "DOMAIN_ALREADY_EXISTS": "The registration domain is already in use."
+  },
   "error": {
     "INTERNAL": "Internal server error",
     "FORBIDDEN": "Forbidden access to this resource",

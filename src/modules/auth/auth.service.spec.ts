@@ -1,10 +1,11 @@
-import { UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { UnauthorizedException, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { createHash } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { MailService } from '../mail/mail.service';
+import { ClsService } from 'nestjs-cls';
 
 jest.mock('bcrypt', () => ({
   compare: jest.fn(),
@@ -25,6 +26,10 @@ describe('AuthService', () => {
         create: jest.fn(),
         update: jest.fn(),
       },
+      tenant: {
+        findUnique: jest.fn(),
+        create: jest.fn(),
+      },
       refreshToken: {
         create: jest.fn(),
         findMany: jest.fn(),
@@ -43,7 +48,12 @@ describe('AuthService', () => {
       sendResetOtpEmail: jest.fn(),
     } as unknown as MailService;
 
-    service = new AuthService(prisma, jwtService, mailService);
+    const clsMock = {
+      get: jest.fn(),
+      set: jest.fn(),
+    } as unknown as ClsService;
+
+    service = new AuthService(prisma, jwtService, mailService, clsMock);
   });
 
   it('login throws when user not found', async () => {
@@ -235,6 +245,53 @@ describe('AuthService', () => {
       expect(prisma.refreshToken.deleteMany).toHaveBeenCalledWith({
         where: { userId: 'u1' },
       });
+    });
+  });
+
+  describe('registerTenant', () => {
+    it('throws ConflictException if domain already exists', async () => {
+      prisma.tenant.findUnique.mockResolvedValue({ id: 't1', domain: 'existing' });
+
+      await expect(
+        service.registerTenant({
+          companyName: 'Existing Company',
+          domain: 'existing',
+          adminEmail: 'admin@existing.com',
+          adminUsername: 'admin',
+          adminPassword: 'Password123!',
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('creates tenant and admin user, returns safe response', async () => {
+      prisma.tenant.findUnique.mockResolvedValue(null);
+      prisma.tenant.create.mockResolvedValue({ id: 't-new', name: 'New Company', domain: 'new' });
+      prisma.user.create.mockResolvedValue({
+        id: 'u-new',
+        tenantId: 't-new',
+        email: 'admin@new.com',
+        username: 'admin',
+        passwordHash: 'hashed-password',
+        role: 'ADMIN',
+        isActive: true,
+        passwordChangeRequired: false,
+      });
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
+
+      const result = await service.registerTenant({
+        companyName: 'New Company',
+        domain: 'new',
+        adminEmail: 'admin@new.com',
+        adminUsername: 'admin',
+        adminPassword: 'Password123!',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.tenant.id).toBe('t-new');
+      expect(result.admin.id).toBe('u-new');
+      expect('passwordHash' in result.admin).toBe(false);
+      expect(prisma.tenant.create).toHaveBeenCalled();
+      expect(prisma.user.create).toHaveBeenCalled();
     });
   });
 });
