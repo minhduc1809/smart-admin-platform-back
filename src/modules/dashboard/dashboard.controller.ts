@@ -16,29 +16,36 @@ export class DashboardController {
 
   @Get('summary')
   @Roles(Role.ADMIN, Role.MANAGER)
-  @ApiOperation({ summary: 'Tổng quan nhanh - toàn hệ thống' })
-  getSummary() {
-    return this.dashboardService.getSummary();
+  @ApiOperation({ summary: 'Tổng quan nhanh - trong tenant' })
+  getSummary(@CurrentUser('tenantId') tenantId: string) {
+    return this.dashboardService.getSummary(tenantId);
   }
 
   @Get('my-summary')
   @ApiOperation({ summary: 'Tổng quan nhanh - của tôi' })
-  getMySummary(@CurrentUser('id') userId: string) {
-    return this.dashboardService.getMySummary(userId);
+  getMySummary(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('tenantId') tenantId: string,
+  ) {
+    return this.dashboardService.getMySummary(userId, tenantId);
   }
 
   @Get('submissions-by-status')
   @Roles(Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Phân bổ submissions theo trạng thái' })
-  getSubmissionsByStatus() {
-    return this.dashboardService.getSubmissionsByStatus();
+  getSubmissionsByStatus(@CurrentUser('tenantId') tenantId: string) {
+    return this.dashboardService.getSubmissionsByStatus(tenantId);
   }
 
   @Get('submissions-by-day')
   @Roles(Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Số submissions theo ngày' })
-  getSubmissionsByDay(@Query('days') days?: string) {
+  getSubmissionsByDay(
+    @CurrentUser('tenantId') tenantId: string,
+    @Query('days') days?: string,
+  ) {
     return this.dashboardService.getSubmissionsByDay(
+      tenantId,
       days ? parseInt(days, 10) : 30,
     );
   }
@@ -46,14 +53,26 @@ export class DashboardController {
   @Get('top-forms')
   @Roles(Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Top forms được dùng nhiều nhất' })
-  getTopForms(@Query('limit') limit?: string) {
-    return this.dashboardService.getTopForms(limit ? parseInt(limit, 10) : 5);
+  getTopForms(
+    @CurrentUser('tenantId') tenantId: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.dashboardService.getTopForms(
+      tenantId,
+      limit ? parseInt(limit, 10) : 5,
+    );
   }
 
   @Get('sla-metrics')
   @Roles(Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'SLA compliance metrics per workflow step' })
-  getSlaMetrics(@Query('days') days?: string) {
-    return this.dashboardService.getSlaMetrics(days ? parseInt(days, 10) : 30);
+  getSlaMetrics(
+    @CurrentUser('tenantId') tenantId: string,
+    @Query('days') days?: string,
+  ) {
+    return this.dashboardService.getSlaMetrics(
+      tenantId,
+      days ? parseInt(days, 10) : 30,
+    );
   }
 }

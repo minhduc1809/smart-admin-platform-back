@@ -11,8 +11,11 @@ import { RegisterDto } from './dto/register.dto';
 import type { StringValue } from 'ms';
 import ms from 'ms';
 import * as bcrypt from 'bcrypt';
-import { randomUUID, randomBytes, createHash } from 'crypto';
+import { randomUUID, randomBytes, randomInt, createHash } from 'crypto';
 import { MailService } from '../mail/mail.service';
+import { ClsService } from 'nestjs-cls';
+import { Role } from '@prisma/client';
+import { RegisterTenantDto } from './dto/register-tenant.dto';
 
 interface JwtPayload {
   sub: string;
@@ -33,6 +36,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private mailService: MailService,
+    private readonly cls: ClsService,
   ) {
     const isProd = process.env.NODE_ENV === 'production';
 
@@ -142,6 +146,67 @@ export class AuthService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, ...result } = user;
     return result;
+  }
+
+  async registerTenant(dto: RegisterTenantDto) {
+    const domain = dto.domain.toLowerCase().trim();
+    const adminEmail = dto.adminEmail.toLowerCase().trim();
+    const adminUsername = dto.adminUsername.toLowerCase().trim();
+
+    // Check domain uniqueness
+    const existingTenant = await this.prisma.tenant.findUnique({
+      where: { domain },
+    });
+
+    if (existingTenant) {
+      throw new ConflictException('tenant.DOMAIN_ALREADY_EXISTS');
+    }
+
+    // Temporarily clear tenantId context to prevent middleware interference
+    const previousTenantId = this.cls.get('tenantId');
+    this.cls.set('tenantId', undefined);
+
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        // 1. Create Tenant
+        const tenant = await tx.tenant.create({
+          data: {
+            name: dto.companyName,
+            domain,
+            isActive: true,
+          },
+        });
+
+        // 2. Create Admin User
+        const hashedPassword = await bcrypt.hash(dto.adminPassword, 10);
+        const admin = await tx.user.create({
+          data: {
+            tenantId: tenant.id,
+            email: adminEmail,
+            username: adminUsername,
+            passwordHash: hashedPassword,
+            role: Role.ADMIN,
+            firstName: dto.adminFirstName,
+            lastName: dto.adminLastName,
+            isActive: true,
+            passwordChangeRequired: false,
+          },
+        });
+
+        return { tenant, admin };
+      });
+
+      // Remove passwordHash from returned admin
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { passwordHash, ...safeAdmin } = result.admin;
+      return {
+        success: true,
+        tenant: result.tenant,
+        admin: safeAdmin,
+      };
+    } finally {
+      this.cls.set('tenantId', previousTenantId);
+    }
   }
 
   async refreshToken(token: string) {
@@ -365,9 +430,11 @@ export class AuthService {
       return { success: true, message: 'auth.FORGOT_PASSWORD_SENT' };
     }
 
-    const token = randomBytes(32).toString('hex');
-    const hash = createHash('sha256').update(token).digest('hex');
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    // 6-digit OTP — hashed with the user id so it can only be verified
+    // together with the matching email (prevents cross-user brute force)
+    const otp = randomInt(100000, 1000000).toString();
+    const hash = createHash('sha256').update(`${user.id}:${otp}`).digest('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -377,9 +444,45 @@ export class AuthService {
       },
     });
 
-    await this.mailService.sendResetPasswordEmail(user.email, token, user.tenantId);
+    await this.mailService.sendResetOtpEmail(user.email, otp);
 
     return { success: true, message: 'auth.FORGOT_PASSWORD_SENT' };
+  }
+
+  async verifyResetOtp(email: string, otp: string) {
+    const emailLower = email.toLowerCase();
+    const user = await this.prisma.user.findFirst({
+      where: { email: emailLower, deletedAt: null },
+    });
+
+    const hash = user
+      ? createHash('sha256').update(`${user.id}:${otp}`).digest('hex')
+      : '';
+
+    if (
+      !user ||
+      !user.passwordResetHash ||
+      user.passwordResetHash !== hash ||
+      !user.passwordResetExpiresAt ||
+      user.passwordResetExpiresAt <= new Date()
+    ) {
+      throw new BadRequestException('auth.INVALID_OR_EXPIRED_OTP');
+    }
+
+    // Swap the OTP for a single-use reset token: the OTP can no longer be
+    // replayed, and resetPassword() keeps working unchanged with this token
+    const token = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetHash: tokenHash,
+        passwordResetExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      },
+    });
+
+    return { success: true, resetToken: token };
   }
 
   async resetPassword(token: string, newPassword: string) {

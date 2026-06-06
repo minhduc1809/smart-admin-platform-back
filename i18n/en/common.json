@@ -9,6 +9,7 @@
     "REGISTER_SUCCESS": "Registered successfully",
     "FORGOT_PASSWORD_SENT": "A reset link has been sent to your email if it exists in the system.",
     "INVALID_OR_EXPIRED_RESET_TOKEN": "Reset token is invalid or has expired.",
+    "INVALID_OR_EXPIRED_OTP": "OTP code is invalid or has expired.",
     "PASSWORD_RESET_SUCCESS": "Password reset successfully. Please log in again.",
     "PASSWORD_CHANGE_SUCCESS": "Password changed successfully.",
     "INCORRECT_OLD_PASSWORD": "Old password is incorrect"
@@ -58,6 +59,9 @@
     "invalid_option": "Selection not in allowed options",
     "file_too_large": "File exceeds {maxMb} MB",
     "file_type_not_allowed": "File type is not allowed"
+  },
+  "tenant": {
+    "DOMAIN_ALREADY_EXISTS": "The registration domain is already in use."
   },
   "error": {
     "INTERNAL": "Internal server error",

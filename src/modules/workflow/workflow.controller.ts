@@ -57,10 +57,13 @@ export class WorkflowController {
   }
 
   @Get('definitions/:id')
-  @Roles(Role.ADMIN, Role.MANAGER)
+  @Roles(Role.ADMIN, Role.MANAGER, Role.HR, Role.USER)
   @ApiOperation({ summary: 'Get a workflow definition by ID' })
-  findOneDefinition(@Param('id') id: string) {
-    return this.definitionService.findOne(id);
+  findOneDefinition(
+    @Param('id') id: string,
+    @CurrentUser('tenantId') tenantId: string,
+  ) {
+    return this.definitionService.findOne(id, tenantId);
   }
 
   @Put('definitions/:id')

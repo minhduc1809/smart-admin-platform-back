@@ -1,9 +1,11 @@
-import { UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { UnauthorizedException, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { createHash } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { MailService } from '../mail/mail.service';
+import { ClsService } from 'nestjs-cls';
 
 jest.mock('bcrypt', () => ({
   compare: jest.fn(),
@@ -24,6 +26,10 @@ describe('AuthService', () => {
         create: jest.fn(),
         update: jest.fn(),
       },
+      tenant: {
+        findUnique: jest.fn(),
+        create: jest.fn(),
+      },
       refreshToken: {
         create: jest.fn(),
         findMany: jest.fn(),
@@ -39,10 +45,15 @@ describe('AuthService', () => {
     } as unknown as JwtService;
 
     mailService = {
-      sendResetPasswordEmail: jest.fn(),
+      sendResetOtpEmail: jest.fn(),
     } as unknown as MailService;
 
-    service = new AuthService(prisma, jwtService, mailService);
+    const clsMock = {
+      get: jest.fn(),
+      set: jest.fn(),
+    } as unknown as ClsService;
+
+    service = new AuthService(prisma, jwtService, mailService, clsMock);
   });
 
   it('login throws when user not found', async () => {
@@ -92,10 +103,10 @@ describe('AuthService', () => {
       const result = await service.forgotPassword('none@demo.com');
       expect(result.success).toBe(true);
       expect(result.message).toBe('auth.FORGOT_PASSWORD_SENT');
-      expect(mailService.sendResetPasswordEmail).not.toHaveBeenCalled();
+      expect(mailService.sendResetOtpEmail).not.toHaveBeenCalled();
     });
 
-    it('generates reset token, updates user and calls mailService', async () => {
+    it('generates reset OTP, updates user and calls mailService', async () => {
       prisma.user.findFirst.mockResolvedValue({
         id: 'u1',
         email: 'user@demo.com',
@@ -106,7 +117,59 @@ describe('AuthService', () => {
       const result = await service.forgotPassword('user@demo.com');
       expect(result.success).toBe(true);
       expect(prisma.user.update).toHaveBeenCalled();
-      expect(mailService.sendResetPasswordEmail).toHaveBeenCalled();
+      expect(mailService.sendResetOtpEmail).toHaveBeenCalled();
+      const otp = mailService.sendResetOtpEmail.mock.calls[0][1];
+      expect(otp).toMatch(/^\d{6}$/);
+    });
+  });
+
+  describe('verifyResetOtp', () => {
+    it('throws BadRequestException when OTP does not match', async () => {
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'u1',
+        email: 'user@demo.com',
+        passwordResetHash: 'some-other-hash',
+        passwordResetExpiresAt: new Date(Date.now() + 60_000),
+      });
+
+      await expect(service.verifyResetOtp('user@demo.com', '123456')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('throws BadRequestException when OTP is expired', async () => {
+      const otp = '123456';
+      const hash = createHash('sha256').update(`u1:${otp}`).digest('hex');
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'u1',
+        email: 'user@demo.com',
+        passwordResetHash: hash,
+        passwordResetExpiresAt: new Date(Date.now() - 1000),
+      });
+
+      await expect(service.verifyResetOtp('user@demo.com', otp)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('returns a resetToken and replaces the OTP hash when valid', async () => {
+      const otp = '123456';
+      const hash = createHash('sha256').update(`u1:${otp}`).digest('hex');
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'u1',
+        email: 'user@demo.com',
+        passwordResetHash: hash,
+        passwordResetExpiresAt: new Date(Date.now() + 60_000),
+      });
+
+      const result = await service.verifyResetOtp('user@demo.com', otp);
+
+      expect(result.success).toBe(true);
+      expect(typeof result.resetToken).toBe('string');
+      expect(result.resetToken).toHaveLength(64);
+      // the stored hash must be swapped to the new token's hash, not the OTP's
+      const updatedHash = prisma.user.update.mock.calls[0][0].data.passwordResetHash;
+      expect(updatedHash).not.toBe(hash);
     });
   });
 
@@ -182,6 +245,53 @@ describe('AuthService', () => {
       expect(prisma.refreshToken.deleteMany).toHaveBeenCalledWith({
         where: { userId: 'u1' },
       });
+    });
+  });
+
+  describe('registerTenant', () => {
+    it('throws ConflictException if domain already exists', async () => {
+      prisma.tenant.findUnique.mockResolvedValue({ id: 't1', domain: 'existing' });
+
+      await expect(
+        service.registerTenant({
+          companyName: 'Existing Company',
+          domain: 'existing',
+          adminEmail: 'admin@existing.com',
+          adminUsername: 'admin',
+          adminPassword: 'Password123!',
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('creates tenant and admin user, returns safe response', async () => {
+      prisma.tenant.findUnique.mockResolvedValue(null);
+      prisma.tenant.create.mockResolvedValue({ id: 't-new', name: 'New Company', domain: 'new' });
+      prisma.user.create.mockResolvedValue({
+        id: 'u-new',
+        tenantId: 't-new',
+        email: 'admin@new.com',
+        username: 'admin',
+        passwordHash: 'hashed-password',
+        role: 'ADMIN',
+        isActive: true,
+        passwordChangeRequired: false,
+      });
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
+
+      const result = await service.registerTenant({
+        companyName: 'New Company',
+        domain: 'new',
+        adminEmail: 'admin@new.com',
+        adminUsername: 'admin',
+        adminPassword: 'Password123!',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.tenant.id).toBe('t-new');
+      expect(result.admin.id).toBe('u-new');
+      expect('passwordHash' in result.admin).toBe(false);
+      expect(prisma.tenant.create).toHaveBeenCalled();
+      expect(prisma.user.create).toHaveBeenCalled();
     });
   });
 });

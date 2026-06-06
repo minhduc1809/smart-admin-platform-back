@@ -51,9 +51,9 @@ export class WorkflowDefinitionService {
     };
   }
 
-  async findOne(id: string) {
-    const definition = await this.prisma.workflowDefinition.findUnique({
-      where: { id },
+  async findOne(id: string, tenantId?: string) {
+    const definition = await this.prisma.workflowDefinition.findFirst({
+      where: { id, ...(tenantId ? { tenantId } : {}) },
       include: { form: { select: { id: true, name: true } } },
     });
 

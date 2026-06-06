@@ -20,7 +20,9 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { RegisterTenantDto } from './dto/register-tenant.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -99,6 +101,15 @@ export class AuthController {
   }
 
   @Public()
+  @Post('register-tenant')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Register a new tenant and its admin user' })
+  @ApiResponse({ status: 201, description: 'Tenant and admin user registered successfully' })
+  registerTenant(@Body() dto: RegisterTenantDto) {
+    return this.authService.registerTenant(dto);
+  }
+
+  @Public()
   @Post('forgot-password')
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @HttpCode(HttpStatus.OK)
@@ -106,6 +117,16 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Success message' })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.email);
+  }
+
+  @Public()
+  @Post('verify-reset-otp')
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify password reset OTP, returns a reset token' })
+  @ApiResponse({ status: 200, description: 'Returns resetToken when OTP is valid' })
+  verifyResetOtp(@Body() dto: VerifyResetOtpDto) {
+    return this.authService.verifyResetOtp(dto.email, dto.otp);
   }
 
   @Public()

@@ -116,7 +116,10 @@ export class ValidationEngine {
       }
 
       if (fieldDef.type === 'select') {
-        const options = this.resolveSelectOptions(fieldDef, rules);
+        const options = this.resolveSelectOptions(fieldDef, rules).map(
+          (option) =>
+            option && typeof option === 'object' ? option.value : option,
+        );
         if (options.length > 0) {
           const values = Array.isArray(value) ? value : [value];
           const invalid = values.filter((item) => !options.includes(item));
