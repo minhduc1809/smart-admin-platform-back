@@ -43,7 +43,6 @@ export class WorkflowActionService {
         throw new ForbiddenException('workflow.INVALID_DELEGATION');
       }
 
-      // Check delegation scope: form restriction
       if (activeDelegation.formIds.length > 0) {
         const submission = await this.prisma.submission.findUnique({
           where: { id: dto.submissionId },
@@ -57,7 +56,6 @@ export class WorkflowActionService {
         }
       }
 
-      // Check delegation scope: workflow definition restriction
       if (activeDelegation.workflowDefinitionIds.length > 0) {
         const instance = await this.prisma.workflowInstance.findFirst({
           where: { submissionId: dto.submissionId, status: 'ACTIVE' },
@@ -168,7 +166,6 @@ export class WorkflowActionService {
       dto.data,
     );
 
-    // Record resubmit in the old instance's history
     await this.prisma.workflowHistory.create({
       data: {
         tenantId: latestInstance.tenantId,
@@ -252,7 +249,6 @@ export class WorkflowActionService {
   }
 
   private async getRevisionChainHistory(submissionId: string) {
-    // Walk up to root (with cycle detection)
     let current = await this.prisma.submission.findUnique({
       where: { id: submissionId },
       select: { id: true, parentSubmissionId: true },
@@ -273,7 +269,6 @@ export class WorkflowActionService {
 
     const rootId = current?.id ?? submissionId;
 
-    // Collect all descendant IDs in batches
     const chain: string[] = [rootId];
     let frontier = [rootId];
     while (frontier.length > 0) {
@@ -355,7 +350,6 @@ export class WorkflowActionService {
       include: { definition: true },
     });
 
-    // If no active instance, check completed/cancelled for resubmit-type actions
     if (!instance) {
       instance = await this.prisma.workflowInstance.findFirst({
         where: {
@@ -393,7 +387,6 @@ export class WorkflowActionService {
       });
 
       for (const del of activeDelegations) {
-        // Skip delegation if scoped to specific forms and this form is not included
         if (
           del.formIds.length > 0 &&
           submission &&
@@ -401,7 +394,6 @@ export class WorkflowActionService {
         ) {
           continue;
         }
-        // Skip delegation if scoped to specific workflows and this definition is not included
         if (
           del.workflowDefinitionIds.length > 0 &&
           instance &&
@@ -509,7 +501,6 @@ export class WorkflowActionService {
       include: { fromUser: true },
     });
 
-    // Collect roles from unscoped delegations (scoped ones are checked per-instance below)
     const unscopedDelegations = activeDelegations.filter(
       (d) => d.formIds.length === 0 && d.workflowDefinitionIds.length === 0,
     );
@@ -520,7 +511,6 @@ export class WorkflowActionService {
       (d) => d.formIds.length > 0 || d.workflowDefinitionIds.length > 0,
     );
 
-    // Pass 1: fetch all active instance IDs with their config (lightweight)
     const allActive = await this.prisma.workflowInstance.findMany({
       where: { status: 'ACTIVE' },
       select: {
@@ -533,12 +523,10 @@ export class WorkflowActionService {
       },
     });
 
-    // Filter by role in memory to get the matching IDs
     const matchingIds = allActive
       .filter((inst) => {
         const config = inst.definition.config as unknown as WorkflowConfig;
 
-        // Build effective roles for this specific instance (base roles + scoped delegation roles)
         const effectiveRoles = new Set(roles);
         for (const del of scopedDelegations) {
           const formOk =
@@ -568,7 +556,6 @@ export class WorkflowActionService {
     const total = matchingIds.length;
     const paginatedIds = matchingIds.slice(skip, skip + limit);
 
-    // Pass 2: fetch paginated IDs with full includes
     const instances = await this.prisma.workflowInstance.findMany({
       where: { id: { in: paginatedIds } },
       include: {

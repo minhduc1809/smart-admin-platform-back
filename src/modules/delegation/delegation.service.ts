@@ -18,7 +18,6 @@ export class DelegationService {
   ) {}
 
   async create(userId: string, userRole: string, dto: CreateDelegationDto) {
-    // Permission check: regular user can only delegate their own work
     if (
       userRole !== Role.ADMIN &&
       userRole !== Role.MANAGER &&
@@ -27,7 +26,6 @@ export class DelegationService {
       throw new ForbiddenException('delegation.NOT_ALLOWED');
     }
 
-    // Validate users exist
     const fromUser = await this.prisma.user.findUnique({
       where: { id: dto.fromUserId },
     });
@@ -43,7 +41,6 @@ export class DelegationService {
       throw new BadRequestException('delegation.TENANT_MISMATCH');
     }
 
-    // Validate scope IDs exist in the tenant
     if (dto.formIds && dto.formIds.length > 0) {
       const forms = await this.prisma.form.findMany({
         where: { id: { in: dto.formIds }, tenantId: fromUser.tenantId },
@@ -105,7 +102,6 @@ export class DelegationService {
   ) {
     const skip = (page - 1) * limit;
 
-    // Filter: admins/managers see all; users see delegations they're involved in
     const where: any = {};
     if (userRole !== Role.ADMIN && userRole !== Role.MANAGER) {
       where.OR = [{ fromUserId: userId }, { toUserId: userId }];
