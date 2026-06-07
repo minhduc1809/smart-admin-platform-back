@@ -50,11 +50,13 @@ async function bootstrap() {
   await redisIoAdapter.connectToRedis(
     configService.get('REDIS_HOST', 'localhost'),
     configService.get('REDIS_PORT', 6379),
+    configService.get('REDIS_PASSWORD') || undefined,
   );
   app.useWebSocketAdapter(redisIoAdapter);
 
-  await app.listen(3000);
-  console.log('🚀 Server is running on: http://localhost:3000');
-  console.log('📚 Swagger Docs is running on: http://localhost:3000/api');
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+  console.log(`🚀 Server is running on: http://localhost:${port}`);
+  console.log(`📚 Swagger Docs is running on: http://localhost:${port}/api`);
 }
 bootstrap();
