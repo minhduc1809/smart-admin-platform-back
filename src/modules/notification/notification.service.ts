@@ -24,7 +24,6 @@ export class NotificationService {
     return `${dd}/${mm}`;
   }
 
-  /** Tên hiển thị của người thao tác, ví dụ "Trần Minh Quân (Quản lý)" */
   private async getActorDisplay(userId: string, withRole = true) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -147,7 +146,6 @@ export class NotificationService {
     comment?: string;
     isCompleted?: boolean;
   }) {
-    // Bước cuối đã được notifyWorkflowCompleted xử lý — tránh thông báo trùng
     if (payload.isCompleted) return;
 
     const submission = await this.prisma.submission.findUnique({
@@ -212,7 +210,6 @@ export class NotificationService {
     });
 
     if (!submission) return;
-    // Tự thao tác (vd. tự hủy) thì không cần thông báo
     if (payload.actorId && submission.submittedBy === payload.actorId) return;
 
     const formName = (submission as any).form?.name ?? 'yêu cầu';
@@ -277,7 +274,6 @@ export class NotificationService {
     });
   }
 
-  /** Thông báo cho người được ủy quyền khi có ủy quyền mới (frame 18 · bdi2) */
   async notifyDelegationCreated(payload: {
     delegationId: string;
     fromUserId: string;

@@ -82,7 +82,6 @@ export class DelegationService {
       },
     });
 
-    // Thông báo cho người được ủy quyền — lỗi thông báo không chặn việc tạo
     this.notificationService
       .notifyDelegationCreated({
         delegationId: delegation.id,
