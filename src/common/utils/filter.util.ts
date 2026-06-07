@@ -24,6 +24,8 @@ export class FilterUtil {
       if (filter.active === false) continue;
 
       const { field, operator, values } = filter;
+      // filters đến từ request body — bỏ qua filter sai shape thay vì crash 500
+      if (!field || !operator || !Array.isArray(values)) continue;
       const value = values[0]; // main value
 
       // Handle nested fields (e.g., 'user.email' -> { user: { email: xyz } })
