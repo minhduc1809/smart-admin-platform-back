@@ -89,6 +89,7 @@ export class FormService {
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.schema && { schema: dto.schema || {} }),
         ...(dto.settings && { settings: dto.settings || {} }),
+        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
     });
   }

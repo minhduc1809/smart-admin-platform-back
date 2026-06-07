@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsObject, IsOptional, IsString } from 'class-validator';
+import { IsObject, IsOptional, IsString, IsBoolean } from 'class-validator';
 
 export class UpdateFormDto {
   @ApiPropertyOptional({ example: 'Survey 2024' })
@@ -33,4 +33,9 @@ export class UpdateFormDto {
   @IsOptional()
   @IsObject()
   settings?: any;
+
+  @ApiPropertyOptional({ example: false, description: 'Trạng thái hoạt động của biểu mẫu' })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
