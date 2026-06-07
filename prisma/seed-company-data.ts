@@ -357,7 +357,7 @@ const LY_DO_OT = [
 const DU_AN = [
   { label: 'Dự án E-Wallet VPay', value: 'vpay' },
   { label: 'Dự án CRM OmniSale', value: 'omnisale' },
-  { label: 'Dự án Chuyển đổi số QN', value: 'cds_qn' },
+  { label: 'Dự án Chuyển đổi số QN', value: 'Dự án Chuyển đổi số QN' },
   { label: 'Sản phẩm nội bộ TechHub', value: 'techhub' },
   { label: 'Vận hành - Bảo trì', value: 'maintenance' },
 ];
@@ -621,10 +621,10 @@ async function main() {
             type: 'select',
             rules: { required: true },
             options: [
-              { label: 'Nghỉ phép năm', value: 'phep_nam' },
-              { label: 'Nghỉ ốm (có BHXH)', value: 'nghi_om' },
-              { label: 'Nghỉ việc riêng không lương', value: 'khong_luong' },
-              { label: 'Nghỉ chế độ (cưới, tang, thai sản)', value: 'che_do' },
+              { label: 'Nghỉ phép năm', value: 'Phép năm' },
+              { label: 'Nghỉ ốm (có BHXH)', value: 'Nghỉ ốm' },
+              { label: 'Nghỉ việc riêng không lương', value: 'Không lương' },
+              { label: 'Nghỉ chế độ (cưới, tang, thai sản)', value: 'Nghỉ chế độ' },
             ],
           },
           {
@@ -766,9 +766,9 @@ async function main() {
             type: 'select',
             rules: { required: true },
             options: [
-              { label: 'Bình thường', value: 'binh_thuong' },
-              { label: 'Cấp bách', value: 'cap_bach' },
-              { label: 'Khẩn cấp', value: 'khan_cap' },
+              { label: 'Bình thường', value: 'Bình thường' },
+              { label: 'Cấp bách', value: 'Cấp bách' },
+              { label: 'Khẩn cấp', value: 'Khẩn cấp' },
             ],
           },
         ],
@@ -861,10 +861,10 @@ async function main() {
             type: 'select',
             rules: { required: true },
             options: [
-              { label: 'Máy bay', value: 'may_bay' },
+              { label: 'Máy bay', value: 'Máy bay' },
               { label: 'Tàu hỏa', value: 'tau' },
-              { label: 'Xe công ty', value: 'xe_cty' },
-              { label: 'Tự túc (có hỗ trợ xăng xe)', value: 'tu_tuc' },
+              { label: 'Xe công ty', value: 'Xe công ty' },
+              { label: 'Tự túc (có hỗ trợ xăng xe)', value: 'Tự túc' },
             ],
           },
           {
@@ -915,9 +915,9 @@ async function main() {
             type: 'select',
             rules: { required: true },
             options: [
-              { label: 'Đạt — ký HĐLĐ chính thức', value: 'dat' },
-              { label: 'Gia hạn thử việc thêm 1 tháng', value: 'gia_han' },
-              { label: 'Không đạt — kết thúc hợp đồng', value: 'khong_dat' },
+              { label: 'Đạt — ký HĐLĐ chính thức', value: 'Đạt' },
+              { label: 'Gia hạn thử việc thêm 1 tháng', value: 'Gia hạn thử việc' },
+              { label: 'Không đạt — kết thúc hợp đồng', value: 'Không đạt' },
             ],
           },
           {
@@ -944,10 +944,10 @@ async function main() {
             type: 'select',
             rules: { required: true },
             options: [
-              { label: 'Môi trường làm việc', value: 'moi_truong' },
-              { label: 'Quy trình - công cụ', value: 'quy_trinh' },
-              { label: 'Phúc lợi - văn hóa', value: 'phuc_loi' },
-              { label: 'Khác', value: 'khac' },
+              { label: 'Môi trường làm việc', value: 'Môi trường làm việc' },
+              { label: 'Quy trình - công cụ', value: 'Quy trình - công cụ' },
+              { label: 'Phúc lợi - văn hóa', value: 'Phúc lợi - văn hóa' },
+              { label: 'Khác', value: 'Khác' },
             ],
           },
           {
@@ -991,58 +991,58 @@ async function main() {
       formKey: 'nghi-phep',
       config: {
         states: [
-          'cho_quan_ly',
-          'cho_nhan_su',
-          'da_duyet',
-          'tu_choi',
-          'tra_lai',
+          'Chờ quản lý duyệt',
+          'Chờ nhân sự duyệt',
+          'Đã duyệt',
+          'Từ chối',
+          'Trả lại',
         ],
-        initialState: 'cho_quan_ly',
-        finalStates: ['da_duyet', 'tu_choi', 'tra_lai'],
+        initialState: 'Chờ quản lý duyệt',
+        finalStates: ['Đã duyệt', 'Từ chối', 'Trả lại'],
         transitions: [
           {
-            from: 'cho_quan_ly',
-            to: 'cho_nhan_su',
+            from: 'Chờ quản lý duyệt',
+            to: 'Chờ nhân sự duyệt',
             action: 'approve',
             roles: ['MANAGER', 'ADMIN'],
           },
           {
-            from: 'cho_quan_ly',
-            to: 'tu_choi',
+            from: 'Chờ quản lý duyệt',
+            to: 'Từ chối',
             action: 'reject',
             roles: ['MANAGER', 'ADMIN'],
             conditions: requireComment,
           },
           {
-            from: 'cho_quan_ly',
-            to: 'tra_lai',
+            from: 'Chờ quản lý duyệt',
+            to: 'Trả lại',
             action: 'return_for_edit',
             roles: ['MANAGER', 'ADMIN'],
             conditions: requireComment,
           },
           {
-            from: 'cho_nhan_su',
-            to: 'da_duyet',
+            from: 'Chờ nhân sự duyệt',
+            to: 'Đã duyệt',
             action: 'approve',
             roles: ['HR', 'ADMIN'],
           },
           {
-            from: 'cho_nhan_su',
-            to: 'tu_choi',
+            from: 'Chờ nhân sự duyệt',
+            to: 'Từ chối',
             action: 'reject',
             roles: ['HR', 'ADMIN'],
             conditions: requireComment,
           },
           {
-            from: 'cho_nhan_su',
-            to: 'tra_lai',
+            from: 'Chờ nhân sự duyệt',
+            to: 'Trả lại',
             action: 'return_for_edit',
             roles: ['HR', 'ADMIN'],
             conditions: requireComment,
           },
           {
-            from: 'tra_lai',
-            to: 'cho_quan_ly',
+            from: 'Trả lại',
+            to: 'Chờ quản lý duyệt',
             action: 'resubmit',
             roles: ['USER', 'HR', 'MANAGER', 'ADMIN'],
           },
@@ -1052,7 +1052,7 @@ async function main() {
           tu_choi: 'REJECTED',
           tra_lai: 'RETURNED',
         },
-        resubmitTargetState: 'cho_quan_ly',
+        resubmitTargetState: 'Chờ quản lý duyệt',
         statesDetails: {
           cho_quan_ly: { label: 'Chờ Quản lý duyệt', slaHours: 24 },
           cho_nhan_su: { label: 'Chờ Nhân sự xác nhận', slaHours: 48 },
@@ -1063,19 +1063,19 @@ async function main() {
       name: 'Quy trình duyệt làm thêm giờ (1 bước)',
       formKey: 'lam-them-gio',
       config: {
-        states: ['cho_quan_ly', 'da_duyet', 'tu_choi'],
-        initialState: 'cho_quan_ly',
-        finalStates: ['da_duyet', 'tu_choi'],
+        states: ['Chờ quản lý duyệt', 'Đã duyệt', 'Từ chối'],
+        initialState: 'Chờ quản lý duyệt',
+        finalStates: ['Đã duyệt', 'Từ chối'],
         transitions: [
           {
-            from: 'cho_quan_ly',
-            to: 'da_duyet',
+            from: 'Chờ quản lý duyệt',
+            to: 'Đã duyệt',
             action: 'approve',
             roles: ['MANAGER', 'ADMIN'],
           },
           {
-            from: 'cho_quan_ly',
-            to: 'tu_choi',
+            from: 'Chờ quản lý duyệt',
+            to: 'Từ chối',
             action: 'reject',
             roles: ['MANAGER', 'ADMIN'],
             conditions: requireComment,
@@ -1092,51 +1092,51 @@ async function main() {
       formKey: 'tam-ung',
       config: {
         states: [
-          'cho_quan_ly',
-          'cho_tai_chinh',
-          'da_duyet',
-          'tu_choi',
-          'tra_lai',
+          'Chờ quản lý duyệt',
+          'Chờ tài chính duyệt',
+          'Đã duyệt',
+          'Từ chối',
+          'Trả lại',
         ],
-        initialState: 'cho_quan_ly',
-        finalStates: ['da_duyet', 'tu_choi', 'tra_lai'],
+        initialState: 'Chờ quản lý duyệt',
+        finalStates: ['Đã duyệt', 'Từ chối', 'Trả lại'],
         transitions: [
           {
-            from: 'cho_quan_ly',
-            to: 'cho_tai_chinh',
+            from: 'Chờ quản lý duyệt',
+            to: 'Chờ tài chính duyệt',
             action: 'approve',
             roles: ['MANAGER', 'ADMIN'],
           },
           {
-            from: 'cho_quan_ly',
-            to: 'tu_choi',
+            from: 'Chờ quản lý duyệt',
+            to: 'Từ chối',
             action: 'reject',
             roles: ['MANAGER', 'ADMIN'],
             conditions: requireComment,
           },
           {
-            from: 'cho_quan_ly',
-            to: 'tra_lai',
+            from: 'Chờ quản lý duyệt',
+            to: 'Trả lại',
             action: 'return_for_edit',
             roles: ['MANAGER', 'ADMIN'],
             conditions: requireComment,
           },
           {
-            from: 'cho_tai_chinh',
-            to: 'da_duyet',
+            from: 'Chờ tài chính duyệt',
+            to: 'Đã duyệt',
             action: 'approve',
             roles: ['MANAGER', 'ADMIN'],
           },
           {
-            from: 'cho_tai_chinh',
-            to: 'tu_choi',
+            from: 'Chờ tài chính duyệt',
+            to: 'Từ chối',
             action: 'reject',
             roles: ['MANAGER', 'ADMIN'],
             conditions: requireComment,
           },
           {
-            from: 'tra_lai',
-            to: 'cho_quan_ly',
+            from: 'Trả lại',
+            to: 'Chờ quản lý duyệt',
             action: 'resubmit',
             roles: ['USER', 'HR', 'MANAGER', 'ADMIN'],
           },
@@ -1146,7 +1146,7 @@ async function main() {
           tu_choi: 'REJECTED',
           tra_lai: 'RETURNED',
         },
-        resubmitTargetState: 'cho_quan_ly',
+        resubmitTargetState: 'Chờ quản lý duyệt',
         statesDetails: {
           cho_quan_ly: { label: 'Chờ Quản lý duyệt', slaHours: 24 },
           cho_tai_chinh: { label: 'Chờ Tài chính duyệt chi', slaHours: 48 },
@@ -1157,21 +1157,21 @@ async function main() {
       name: 'Quy trình mua sắm (duyệt song song Quản lý + Tài chính)',
       formKey: 'mua-sam',
       config: {
-        states: ['cho_duyet', 'da_duyet', 'tu_choi'],
-        initialState: 'cho_duyet',
-        finalStates: ['da_duyet', 'tu_choi'],
+        states: ['Chờ duyệt', 'Đã duyệt', 'Từ chối'],
+        initialState: 'Chờ duyệt',
+        finalStates: ['Đã duyệt', 'Từ chối'],
         transitions: [
           {
-            from: 'cho_duyet',
-            to: 'da_duyet',
-            action: 'approve_quan_ly',
+            from: 'Chờ duyệt',
+            to: 'Đã duyệt',
+            action: 'Quản lý phê duyệt',
             roles: ['MANAGER', 'ADMIN'],
             type: 'PARALLEL_JOIN',
-            requireActions: ['approve_quan_ly', 'approve_tai_chinh'],
+            requireActions: ['Quản lý phê duyệt', 'Tài chính phê duyệt'],
           },
           {
-            from: 'cho_duyet',
-            to: 'tu_choi',
+            from: 'Chờ duyệt',
+            to: 'Từ chối',
             action: 'reject',
             roles: ['MANAGER', 'ADMIN'],
             conditions: requireComment,
@@ -1190,19 +1190,19 @@ async function main() {
       name: 'Quy trình tuyển dụng (Ban lãnh đạo bỏ phiếu 2 phiếu thuận)',
       formKey: 'tuyen-dung',
       config: {
-        states: ['de_xuat', 'bo_phieu', 'da_duyet', 'tu_choi'],
-        initialState: 'de_xuat',
-        finalStates: ['da_duyet', 'tu_choi'],
+        states: ['Đề xuất', 'Bỏ phiếu hội đồng', 'Đã duyệt', 'Từ chối'],
+        initialState: 'Đề xuất',
+        finalStates: ['Đã duyệt', 'Từ chối'],
         transitions: [
           {
-            from: 'de_xuat',
-            to: 'bo_phieu',
-            action: 'start_review',
+            from: 'Đề xuất',
+            to: 'Bỏ phiếu hội đồng',
+            action: 'Bắt đầu xem xét',
             roles: ['HR', 'MANAGER', 'ADMIN'],
           },
           {
-            from: 'bo_phieu',
-            to: 'da_duyet',
+            from: 'Bỏ phiếu hội đồng',
+            to: 'Đã duyệt',
             action: 'vote_approve',
             roles: ['MANAGER', 'ADMIN'],
             type: 'VOTING',
@@ -1211,8 +1211,8 @@ async function main() {
               rejectAction: 'vote_reject',
               approveThreshold: 2,
               rejectThreshold: 2,
-              approveTarget: 'da_duyet',
-              rejectTarget: 'tu_choi',
+              approveTarget: 'Đã duyệt',
+              rejectTarget: 'Từ chối',
             },
           },
         ],
@@ -1227,32 +1227,32 @@ async function main() {
       name: 'Quy trình công tác (Quản lý → Hành chính)',
       formKey: 'cong-tac',
       config: {
-        states: ['cho_quan_ly', 'cho_hanh_chinh', 'da_duyet', 'tu_choi'],
-        initialState: 'cho_quan_ly',
-        finalStates: ['da_duyet', 'tu_choi'],
+        states: ['Chờ quản lý duyệt', 'Chờ hành chính duyệt', 'Đã duyệt', 'Từ chối'],
+        initialState: 'Chờ quản lý duyệt',
+        finalStates: ['Đã duyệt', 'Từ chối'],
         transitions: [
           {
-            from: 'cho_quan_ly',
-            to: 'cho_hanh_chinh',
+            from: 'Chờ quản lý duyệt',
+            to: 'Chờ hành chính duyệt',
             action: 'approve',
             roles: ['MANAGER', 'ADMIN'],
           },
           {
-            from: 'cho_quan_ly',
-            to: 'tu_choi',
+            from: 'Chờ quản lý duyệt',
+            to: 'Từ chối',
             action: 'reject',
             roles: ['MANAGER', 'ADMIN'],
             conditions: requireComment,
           },
           {
-            from: 'cho_hanh_chinh',
-            to: 'da_duyet',
+            from: 'Chờ hành chính duyệt',
+            to: 'Đã duyệt',
             action: 'approve',
             roles: ['MANAGER', 'ADMIN'],
           },
           {
-            from: 'cho_hanh_chinh',
-            to: 'tu_choi',
+            from: 'Chờ hành chính duyệt',
+            to: 'Từ chối',
             action: 'reject',
             roles: ['MANAGER', 'ADMIN'],
             conditions: requireComment,
@@ -1273,36 +1273,36 @@ async function main() {
       formKey: 'thu-viec',
       config: {
         states: [
-          'cho_quan_ly_danh_gia',
-          'cho_nhan_su_xac_nhan',
-          'da_duyet',
-          'tu_choi',
+          'Chờ quản lý đánh giá',
+          'Chờ nhân sự xác nhận',
+          'Đã duyệt',
+          'Từ chối',
         ],
-        initialState: 'cho_quan_ly_danh_gia',
-        finalStates: ['da_duyet', 'tu_choi'],
+        initialState: 'Chờ quản lý đánh giá',
+        finalStates: ['Đã duyệt', 'Từ chối'],
         transitions: [
           {
-            from: 'cho_quan_ly_danh_gia',
-            to: 'cho_nhan_su_xac_nhan',
+            from: 'Chờ quản lý đánh giá',
+            to: 'Chờ nhân sự xác nhận',
             action: 'approve',
             roles: ['MANAGER', 'ADMIN'],
           },
           {
-            from: 'cho_quan_ly_danh_gia',
-            to: 'tu_choi',
+            from: 'Chờ quản lý đánh giá',
+            to: 'Từ chối',
             action: 'reject',
             roles: ['MANAGER', 'ADMIN'],
             conditions: requireComment,
           },
           {
-            from: 'cho_nhan_su_xac_nhan',
-            to: 'da_duyet',
+            from: 'Chờ nhân sự xác nhận',
+            to: 'Đã duyệt',
             action: 'approve',
             roles: ['HR', 'ADMIN'],
           },
           {
-            from: 'cho_nhan_su_xac_nhan',
-            to: 'tu_choi',
+            from: 'Chờ nhân sự xác nhận',
+            to: 'Từ chối',
             action: 'reject',
             roles: ['HR', 'ADMIN'],
             conditions: requireComment,
@@ -1418,12 +1418,12 @@ async function main() {
       case 'nghi-phep':
         return {
           loaiNghi: pick([
-            'phep_nam',
-            'phep_nam',
-            'phep_nam',
-            'nghi_om',
-            'khong_luong',
-            'che_do',
+            'Phép năm',
+            'Phép năm',
+            'Phép năm',
+            'Nghỉ ốm',
+            'Không lương',
+            'Nghỉ chế độ',
           ]),
           ngayBatDau: isoDate(addDays(createdAt, randInt(3, 21))),
           soNgay: pick([0.5, 1, 1, 2, 2, 3, 5]),
@@ -1453,10 +1453,10 @@ async function main() {
           donGia: tb.gia,
           mucDich: pick(MUC_DICH_MUA_SAM),
           mucDoUuTien: pick([
-            'binh_thuong',
-            'binh_thuong',
-            'cap_bach',
-            'khan_cap',
+            'Bình thường',
+            'Bình thường',
+            'Cấp bách',
+            'Khẩn cấp',
           ]),
         };
       }
@@ -1481,7 +1481,7 @@ async function main() {
           mucDich: pick(MUC_DICH_CONG_TAC),
           ngayDi: isoDate(ngayDi),
           ngayVe: isoDate(addDays(ngayDi, randInt(1, 5))),
-          phuongTien: pick(['may_bay', 'tau', 'xe_cty', 'tu_tuc']),
+          phuongTien: pick(['Máy bay', 'tau', 'Xe công ty', 'Tự túc']),
           kinhPhiDuKien: randInt(2, 30) * 500_000,
         };
       }
@@ -1491,12 +1491,12 @@ async function main() {
           viTri: pick(VI_TRI_TUYEN),
           ngayKetThucThuViec: isoDate(addDays(createdAt, randInt(3, 14))),
           diemDanhGia: randInt(5, 10),
-          ketQua: pick(['dat', 'dat', 'dat', 'gia_han', 'khong_dat']),
+          ketQua: pick(['Đạt', 'Đạt', 'Đạt', 'Gia hạn thử việc', 'Không đạt']),
           nhanXet: pick(NHAN_XET_THU_VIEC),
         };
       case 'gop-y':
         return {
-          chuDe: pick(['moi_truong', 'quy_trinh', 'phuc_loi', 'khac']),
+          chuDe: pick(['Môi trường làm việc', 'Quy trình - công cụ', 'Phúc lợi - văn hóa', 'Khác']),
           noiDung: pick(GOP_Y_NOI_DUNG),
         };
       default:
@@ -1560,7 +1560,7 @@ async function main() {
       case 'thu-viec': {
         const st1 = cfg.initialState as string;
         const st2 =
-          formKey === 'nghi-phep' ? 'cho_nhan_su' : 'cho_nhan_su_xac_nhan';
+          formKey === 'nghi-phep' ? 'Chờ nhân sự duyệt' : 'Chờ nhân sự xác nhận';
         const step2Actor = hrApprover;
         // DRAFT 4%
         if (roll < 4)
@@ -1574,7 +1574,7 @@ async function main() {
         if (roll < 4 + w(52, 30, 10)) {
           return {
             status: SubmissionStatus.APPROVED,
-            currentStep: 'da_duyet',
+            currentStep: 'Đã duyệt',
             instanceStatus: WorkflowInstanceStatus.COMPLETED,
             steps: [
               {
@@ -1587,7 +1587,7 @@ async function main() {
               },
               {
                 fromStep: st2,
-                toStep: 'da_duyet',
+                toStep: 'Đã duyệt',
                 action: 'approve',
                 actorId: step2Actor,
                 comment: approveC(),
@@ -1600,12 +1600,12 @@ async function main() {
           return chance(0.5)
             ? {
                 status: SubmissionStatus.REJECTED,
-                currentStep: 'tu_choi',
+                currentStep: 'Từ chối',
                 instanceStatus: WorkflowInstanceStatus.COMPLETED,
                 steps: [
                   {
                     fromStep: st1,
-                    toStep: 'tu_choi',
+                    toStep: 'Từ chối',
                     action: 'reject',
                     actorId: s1.actorId,
                     comment: pick(REJECT_COMMENTS),
@@ -1615,7 +1615,7 @@ async function main() {
               }
             : {
                 status: SubmissionStatus.REJECTED,
-                currentStep: 'tu_choi',
+                currentStep: 'Từ chối',
                 instanceStatus: WorkflowInstanceStatus.COMPLETED,
                 steps: [
                   {
@@ -1628,7 +1628,7 @@ async function main() {
                   },
                   {
                     fromStep: st2,
-                    toStep: 'tu_choi',
+                    toStep: 'Từ chối',
                     action: 'reject',
                     actorId: step2Actor,
                     comment: pick(REJECT_COMMENTS),
@@ -1643,13 +1643,13 @@ async function main() {
         ) {
           return {
             status: SubmissionStatus.RETURNED,
-            currentStep: 'tra_lai',
+            currentStep: 'Trả lại',
             instanceStatus: WorkflowInstanceStatus.COMPLETED,
             canRevise: true,
             steps: [
               {
                 fromStep: st1,
-                toStep: 'tra_lai',
+                toStep: 'Trả lại',
                 action: 'return_for_edit',
                 actorId: s1.actorId,
                 comment: pick(RETURN_COMMENTS),
@@ -1711,12 +1711,12 @@ async function main() {
         if (roll < 4 + w(68, 45, 18)) {
           return {
             status: SubmissionStatus.APPROVED,
-            currentStep: 'da_duyet',
+            currentStep: 'Đã duyệt',
             instanceStatus: WorkflowInstanceStatus.COMPLETED,
             steps: [
               {
-                fromStep: 'cho_quan_ly',
-                toStep: 'da_duyet',
+                fromStep: 'Chờ quản lý duyệt',
+                toStep: 'Đã duyệt',
                 action: 'approve',
                 actorId: s1.actorId,
                 comment: approveC(),
@@ -1728,12 +1728,12 @@ async function main() {
         if (roll < 4 + w(68, 45, 18) + w(12, 10, 5)) {
           return {
             status: SubmissionStatus.REJECTED,
-            currentStep: 'tu_choi',
+            currentStep: 'Từ chối',
             instanceStatus: WorkflowInstanceStatus.COMPLETED,
             steps: [
               {
-                fromStep: 'cho_quan_ly',
-                toStep: 'tu_choi',
+                fromStep: 'Chờ quản lý duyệt',
+                toStep: 'Từ chối',
                 action: 'reject',
                 actorId: s1.actorId,
                 comment: pick(REJECT_COMMENTS),
@@ -1744,7 +1744,7 @@ async function main() {
         }
         return {
           status: SubmissionStatus.UNDER_REVIEW,
-          currentStep: 'cho_quan_ly',
+          currentStep: 'Chờ quản lý duyệt',
           instanceStatus: WorkflowInstanceStatus.ACTIVE,
           steps: [],
         };
@@ -1752,7 +1752,7 @@ async function main() {
 
       case 'tam-ung':
       case 'cong-tac': {
-        const st2 = formKey === 'tam-ung' ? 'cho_tai_chinh' : 'cho_hanh_chinh';
+        const st2 = formKey === 'tam-ung' ? 'Chờ tài chính duyệt' : 'Chờ hành chính duyệt';
         const step2Actor = formKey === 'tam-ung' ? financeId : hanhChinhId;
         if (roll < 4)
           return {
@@ -1764,11 +1764,11 @@ async function main() {
         if (roll < 4 + w(50, 28, 10)) {
           return {
             status: SubmissionStatus.APPROVED,
-            currentStep: 'da_duyet',
+            currentStep: 'Đã duyệt',
             instanceStatus: WorkflowInstanceStatus.COMPLETED,
             steps: [
               {
-                fromStep: 'cho_quan_ly',
+                fromStep: 'Chờ quản lý duyệt',
                 toStep: st2,
                 action: 'approve',
                 actorId: s1.actorId,
@@ -1777,7 +1777,7 @@ async function main() {
               },
               {
                 fromStep: st2,
-                toStep: 'da_duyet',
+                toStep: 'Đã duyệt',
                 action: 'approve',
                 actorId: step2Actor,
                 comment: approveC(),
@@ -1789,12 +1789,12 @@ async function main() {
           return chance(0.5)
             ? {
                 status: SubmissionStatus.REJECTED,
-                currentStep: 'tu_choi',
+                currentStep: 'Từ chối',
                 instanceStatus: WorkflowInstanceStatus.COMPLETED,
                 steps: [
                   {
-                    fromStep: 'cho_quan_ly',
-                    toStep: 'tu_choi',
+                    fromStep: 'Chờ quản lý duyệt',
+                    toStep: 'Từ chối',
                     action: 'reject',
                     actorId: s1.actorId,
                     comment: pick(REJECT_COMMENTS),
@@ -1804,11 +1804,11 @@ async function main() {
               }
             : {
                 status: SubmissionStatus.REJECTED,
-                currentStep: 'tu_choi',
+                currentStep: 'Từ chối',
                 instanceStatus: WorkflowInstanceStatus.COMPLETED,
                 steps: [
                   {
-                    fromStep: 'cho_quan_ly',
+                    fromStep: 'Chờ quản lý duyệt',
                     toStep: st2,
                     action: 'approve',
                     actorId: s1.actorId,
@@ -1817,7 +1817,7 @@ async function main() {
                   },
                   {
                     fromStep: st2,
-                    toStep: 'tu_choi',
+                    toStep: 'Từ chối',
                     action: 'reject',
                     actorId: step2Actor,
                     comment: pick(REJECT_COMMENTS),
@@ -1831,13 +1831,13 @@ async function main() {
         ) {
           return {
             status: SubmissionStatus.RETURNED,
-            currentStep: 'tra_lai',
+            currentStep: 'Trả lại',
             instanceStatus: WorkflowInstanceStatus.COMPLETED,
             canRevise: true,
             steps: [
               {
-                fromStep: 'cho_quan_ly',
-                toStep: 'tra_lai',
+                fromStep: 'Chờ quản lý duyệt',
+                toStep: 'Trả lại',
                 action: 'return_for_edit',
                 actorId: s1.actorId,
                 comment: pick(RETURN_COMMENTS),
@@ -1849,7 +1849,7 @@ async function main() {
         return chance(0.5)
           ? {
               status: SubmissionStatus.UNDER_REVIEW,
-              currentStep: 'cho_quan_ly',
+              currentStep: 'Chờ quản lý duyệt',
               instanceStatus: WorkflowInstanceStatus.ACTIVE,
               steps: [],
             }
@@ -1859,7 +1859,7 @@ async function main() {
               instanceStatus: WorkflowInstanceStatus.ACTIVE,
               steps: [
                 {
-                  fromStep: 'cho_quan_ly',
+                  fromStep: 'Chờ quản lý duyệt',
                   toStep: st2,
                   action: 'approve',
                   actorId: s1.actorId,
@@ -1890,32 +1890,32 @@ async function main() {
           // APPROVED: 2 phiếu song song (fromStep === toStep) + bản ghi hoàn tất join
           return {
             status: SubmissionStatus.APPROVED,
-            currentStep: 'da_duyet',
+            currentStep: 'Đã duyệt',
             instanceStatus: WorkflowInstanceStatus.COMPLETED,
             steps: [
               {
-                fromStep: 'cho_duyet',
-                toStep: 'cho_duyet',
-                action: 'approve_quan_ly',
+                fromStep: 'Chờ duyệt',
+                toStep: 'Chờ duyệt',
+                action: 'Quản lý phê duyệt',
                 actorId: mgr,
                 comment: approveC(),
                 delegatedForId: s1.delegatedForId,
               },
               {
-                fromStep: 'cho_duyet',
-                toStep: 'cho_duyet',
-                action: 'approve_tai_chinh',
+                fromStep: 'Chờ duyệt',
+                toStep: 'Chờ duyệt',
+                action: 'Tài chính phê duyệt',
                 actorId: fin.actorId,
                 comment: approveC(),
                 delegatedForId: fin.delegatedForId,
               },
               {
-                fromStep: 'cho_duyet',
-                toStep: 'da_duyet',
+                fromStep: 'Chờ duyệt',
+                toStep: 'Đã duyệt',
                 action: 'PARALLEL_JOIN_COMPLETE',
                 actorId: fin.actorId,
                 comment:
-                  'Parallel approval complete: approve_quan_ly, approve_tai_chinh',
+                  'Parallel approval complete: Quản lý phê duyệt, Tài chính phê duyệt',
               },
             ],
           };
@@ -1923,12 +1923,12 @@ async function main() {
         if (roll < 4 + w(50, 28, 10) + w(14, 10, 5)) {
           return {
             status: SubmissionStatus.REJECTED,
-            currentStep: 'tu_choi',
+            currentStep: 'Từ chối',
             instanceStatus: WorkflowInstanceStatus.COMPLETED,
             steps: [
               {
-                fromStep: 'cho_duyet',
-                toStep: 'tu_choi',
+                fromStep: 'Chờ duyệt',
+                toStep: 'Từ chối',
                 action: 'reject',
                 actorId: chance(0.5) ? mgr : financeId,
                 comment: pick(REJECT_COMMENTS),
@@ -1940,19 +1940,19 @@ async function main() {
         return chance(0.5)
           ? {
               status: SubmissionStatus.UNDER_REVIEW,
-              currentStep: 'cho_duyet',
+              currentStep: 'Chờ duyệt',
               instanceStatus: WorkflowInstanceStatus.ACTIVE,
               steps: [],
             }
           : {
               status: SubmissionStatus.UNDER_REVIEW,
-              currentStep: 'cho_duyet',
+              currentStep: 'Chờ duyệt',
               instanceStatus: WorkflowInstanceStatus.ACTIVE,
               steps: [
                 {
-                  fromStep: 'cho_duyet',
-                  toStep: 'cho_duyet',
-                  action: 'approve_quan_ly',
+                  fromStep: 'Chờ duyệt',
+                  toStep: 'Chờ duyệt',
+                  action: 'Quản lý phê duyệt',
                   actorId: mgr,
                   comment: approveC(),
                   delegatedForId: s1.delegatedForId,
@@ -1983,33 +1983,33 @@ async function main() {
         if (roll < 4 + w(45, 25, 8)) {
           return {
             status: SubmissionStatus.APPROVED,
-            currentStep: 'da_duyet',
+            currentStep: 'Đã duyệt',
             instanceStatus: WorkflowInstanceStatus.COMPLETED,
             steps: [
               {
-                fromStep: 'de_xuat',
-                toStep: 'bo_phieu',
-                action: 'start_review',
+                fromStep: 'Đề xuất',
+                toStep: 'Bỏ phiếu hội đồng',
+                action: 'Bắt đầu xem xét',
                 actorId: screener,
                 comment: 'Hồ sơ đề xuất hợp lệ, trình ban lãnh đạo bỏ phiếu',
               },
               {
-                fromStep: 'bo_phieu',
-                toStep: 'bo_phieu',
+                fromStep: 'Bỏ phiếu hội đồng',
+                toStep: 'Bỏ phiếu hội đồng',
                 action: 'vote_approve',
                 actorId: voters[0],
                 comment: 'Nhất trí với đề xuất, nhu cầu thực tế',
               },
               {
-                fromStep: 'bo_phieu',
-                toStep: 'bo_phieu',
+                fromStep: 'Bỏ phiếu hội đồng',
+                toStep: 'Bỏ phiếu hội đồng',
                 action: 'vote_approve',
                 actorId: voters[1],
                 comment: 'Đồng ý tuyển',
               },
               {
-                fromStep: 'bo_phieu',
-                toStep: 'da_duyet',
+                fromStep: 'Bỏ phiếu hội đồng',
+                toStep: 'Đã duyệt',
                 action: 'VOTING_COMPLETE',
                 actorId: voters[1],
                 comment: 'Voting concluded. Threshold: 2 approvals needed.',
@@ -2020,33 +2020,33 @@ async function main() {
         if (roll < 4 + w(45, 25, 8) + w(13, 10, 4)) {
           return {
             status: SubmissionStatus.REJECTED,
-            currentStep: 'tu_choi',
+            currentStep: 'Từ chối',
             instanceStatus: WorkflowInstanceStatus.COMPLETED,
             steps: [
               {
-                fromStep: 'de_xuat',
-                toStep: 'bo_phieu',
-                action: 'start_review',
+                fromStep: 'Đề xuất',
+                toStep: 'Bỏ phiếu hội đồng',
+                action: 'Bắt đầu xem xét',
                 actorId: screener,
                 comment: 'Trình ban lãnh đạo xem xét',
               },
               {
-                fromStep: 'bo_phieu',
-                toStep: 'bo_phieu',
+                fromStep: 'Bỏ phiếu hội đồng',
+                toStep: 'Bỏ phiếu hội đồng',
                 action: 'vote_reject',
                 actorId: voters[0],
                 comment: 'Ngân sách nhân sự quý này đã hết, đề nghị hoãn',
               },
               {
-                fromStep: 'bo_phieu',
-                toStep: 'bo_phieu',
+                fromStep: 'Bỏ phiếu hội đồng',
+                toStep: 'Bỏ phiếu hội đồng',
                 action: 'vote_reject',
                 actorId: voters[1],
                 comment: 'Chưa cấp thiết, ưu tiên điều chuyển nội bộ',
               },
               {
-                fromStep: 'bo_phieu',
-                toStep: 'tu_choi',
+                fromStep: 'Bỏ phiếu hội đồng',
+                toStep: 'Từ chối',
                 action: 'VOTING_COMPLETE',
                 actorId: voters[1],
                 comment: 'Voting concluded. Threshold: 2 approvals needed.',
@@ -2059,20 +2059,20 @@ async function main() {
         if (sub < 0.34)
           return {
             status: SubmissionStatus.UNDER_REVIEW,
-            currentStep: 'de_xuat',
+            currentStep: 'Đề xuất',
             instanceStatus: WorkflowInstanceStatus.ACTIVE,
             steps: [],
           };
         if (sub < 0.67) {
           return {
             status: SubmissionStatus.UNDER_REVIEW,
-            currentStep: 'bo_phieu',
+            currentStep: 'Bỏ phiếu hội đồng',
             instanceStatus: WorkflowInstanceStatus.ACTIVE,
             steps: [
               {
-                fromStep: 'de_xuat',
-                toStep: 'bo_phieu',
-                action: 'start_review',
+                fromStep: 'Đề xuất',
+                toStep: 'Bỏ phiếu hội đồng',
+                action: 'Bắt đầu xem xét',
                 actorId: screener,
                 comment: 'Hồ sơ hợp lệ, trình bỏ phiếu',
               },
@@ -2081,19 +2081,19 @@ async function main() {
         }
         return {
           status: SubmissionStatus.UNDER_REVIEW,
-          currentStep: 'bo_phieu',
+          currentStep: 'Bỏ phiếu hội đồng',
           instanceStatus: WorkflowInstanceStatus.ACTIVE,
           steps: [
             {
-              fromStep: 'de_xuat',
-              toStep: 'bo_phieu',
-              action: 'start_review',
+              fromStep: 'Đề xuất',
+              toStep: 'Bỏ phiếu hội đồng',
+              action: 'Bắt đầu xem xét',
               actorId: screener,
               comment: 'Hồ sơ hợp lệ, trình bỏ phiếu',
             },
             {
-              fromStep: 'bo_phieu',
-              toStep: 'bo_phieu',
+              fromStep: 'Bỏ phiếu hội đồng',
+              toStep: 'Bỏ phiếu hội đồng',
               action: 'vote_approve',
               actorId: voters[0],
               comment: 'Đồng ý với đề xuất',
@@ -2246,7 +2246,7 @@ async function main() {
             data: {
               tenantId,
               instanceId: instance.id,
-              fromStep: 'tra_lai',
+              fromStep: 'Trả lại',
               toStep: initState,
               action: 'resubmit',
               actorId: submitterId,
@@ -2285,7 +2285,7 @@ async function main() {
               tenantId,
               definitionId: wfMap[formKey],
               submissionId: child.id,
-              currentStep: childOld ? 'da_duyet' : initState,
+              currentStep: childOld ? 'Đã duyệt' : initState,
               status: childOld
                 ? WorkflowInstanceStatus.COMPLETED
                 : WorkflowInstanceStatus.ACTIVE,
@@ -2311,7 +2311,7 @@ async function main() {
             let tc = addHours(t, randInt(2, 12));
             if (tc > now)
               tc = new Date(now.getTime() - randInt(5, 30) * 60_000);
-            const st2 = formKey === 'tam-ung' ? 'cho_tai_chinh' : 'cho_nhan_su';
+            const st2 = formKey === 'tam-ung' ? 'Chờ tài chính duyệt' : 'Chờ nhân sự duyệt';
             const fin2 = formKey === 'tam-ung' ? financeId : pick(hrIds);
             await prisma.workflowHistory.create({
               data: {
@@ -2334,7 +2334,7 @@ async function main() {
                 tenantId,
                 instanceId: childInst.id,
                 fromStep: st2,
-                toStep: 'da_duyet',
+                toStep: 'Đã duyệt',
                 action: 'approve',
                 actorId: fin2,
                 comment: pick(APPROVE_COMMENTS),
@@ -2350,15 +2350,15 @@ async function main() {
           const submitterName = userFullName[submitterId];
           if (traj.status === SubmissionStatus.UNDER_REVIEW) {
             const approver =
-              traj.currentStep === 'cho_nhan_su' ||
-              traj.currentStep === 'cho_nhan_su_xac_nhan'
+              traj.currentStep === 'Chờ nhân sự duyệt' ||
+              traj.currentStep === 'Chờ nhân sự xác nhận'
                 ? pick(hrIds)
-                : traj.currentStep === 'cho_tai_chinh'
+                : traj.currentStep === 'Chờ tài chính duyệt'
                   ? financeId
-                  : traj.currentStep === 'cho_hanh_chinh'
+                  : traj.currentStep === 'Chờ hành chính duyệt'
                     ? hanhChinhId
-                    : traj.currentStep === 'bo_phieu' ||
-                        traj.currentStep === 'de_xuat'
+                    : traj.currentStep === 'Bỏ phiếu hội đồng' ||
+                        traj.currentStep === 'Đề xuất'
                       ? hrManagerId
                       : deptManagerOf(submitterId);
             notifQueue.push({

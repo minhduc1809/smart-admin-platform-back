@@ -16,6 +16,8 @@ export class WorkflowEventListener {
     toState: string;
     action: string;
     actorId: string;
+    comment?: string;
+    isCompleted?: boolean;
   }) {
     try {
       await this.notificationService.notifyWorkflowStateChanged(payload);
@@ -32,6 +34,9 @@ export class WorkflowEventListener {
     submissionId: string;
     instanceId: string;
     finalState: string;
+    action?: string;
+    actorId?: string;
+    comment?: string;
   }) {
     try {
       await this.notificationService.notifyWorkflowCompleted(payload);

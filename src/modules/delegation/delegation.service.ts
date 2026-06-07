@@ -8,13 +8,16 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateDelegationDto } from './dto/create-delegation.dto';
 import { UpdateDelegationDto } from './dto/update-delegation.dto';
 import { Role } from '@prisma/client';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class DelegationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async create(userId: string, userRole: string, dto: CreateDelegationDto) {
-    // Permission check: regular user can only delegate their own work
     if (
       userRole !== Role.ADMIN &&
       userRole !== Role.MANAGER &&
@@ -23,7 +26,6 @@ export class DelegationService {
       throw new ForbiddenException('delegation.NOT_ALLOWED');
     }
 
-    // Validate users exist
     const fromUser = await this.prisma.user.findUnique({
       where: { id: dto.fromUserId },
     });
@@ -39,7 +41,6 @@ export class DelegationService {
       throw new BadRequestException('delegation.TENANT_MISMATCH');
     }
 
-    // Validate scope IDs exist in the tenant
     if (dto.formIds && dto.formIds.length > 0) {
       const forms = await this.prisma.form.findMany({
         where: { id: { in: dto.formIds }, tenantId: fromUser.tenantId },
@@ -65,7 +66,7 @@ export class DelegationService {
       }
     }
 
-    return this.prisma.delegation.create({
+    const delegation = await this.prisma.delegation.create({
       data: {
         tenantId: fromUser.tenantId,
         fromUserId: dto.fromUserId,
@@ -77,6 +78,20 @@ export class DelegationService {
         workflowDefinitionIds: dto.workflowDefinitionIds ?? [],
       },
     });
+
+    this.notificationService
+      .notifyDelegationCreated({
+        delegationId: delegation.id,
+        fromUserId: delegation.fromUserId,
+        toUserId: delegation.toUserId,
+        startDate: delegation.startDate,
+        endDate: delegation.endDate,
+        formCount: delegation.formIds.length,
+        workflowCount: delegation.workflowDefinitionIds.length,
+      })
+      .catch(() => undefined);
+
+    return delegation;
   }
 
   async findAll(
@@ -87,7 +102,6 @@ export class DelegationService {
   ) {
     const skip = (page - 1) * limit;
 
-    // Filter: admins/managers see all; users see delegations they're involved in
     const where: any = {};
     if (userRole !== Role.ADMIN && userRole !== Role.MANAGER) {
       where.OR = [{ fromUserId: userId }, { toUserId: userId }];

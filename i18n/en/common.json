@@ -58,7 +58,16 @@
     "INVALID_OPTION": "Selection not in allowed options",
     "invalid_option": "Selection not in allowed options",
     "file_too_large": "File exceeds {maxMb} MB",
-    "file_type_not_allowed": "File type is not allowed"
+    "file_type_not_allowed": "File type is not allowed",
+    "required": "Field {field} is required",
+    "min_length": "Minimum {min} characters",
+    "max_length": "Maximum {max} characters",
+    "min_value": "Minimum value is {min}",
+    "max_value": "Maximum value is {max}",
+    "type_number": "Must be a valid number",
+    "type_date": "Must be a valid date (ISO 8601)",
+    "pattern": "Does not match the required format",
+    "date_after_field": "Must be after {refField}"
   },
   "tenant": {
     "DOMAIN_ALREADY_EXISTS": "The registration domain is already in use."

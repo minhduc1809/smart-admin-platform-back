@@ -35,7 +35,7 @@ describe('NotificationService', () => {
 
     const result = await service.getUnreadCount('user-1');
 
-    expect(result).toEqual({ unread: 3 });
+    expect(result).toEqual({ count: 3 });
   });
 
   it('markAsRead throws when notification not found', async () => {
