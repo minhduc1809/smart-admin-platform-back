@@ -105,6 +105,8 @@ export class WorkflowActionService {
       action: dto.action,
       actorId,
       delegatedForId: dto.delegatedForId,
+      comment: dto.comment,
+      isCompleted: result.isCompleted,
     });
 
     if (result.isCompleted) {
@@ -112,6 +114,9 @@ export class WorkflowActionService {
         submissionId: result.submissionId,
         instanceId: result.instanceId,
         finalState: result.currentState,
+        action: dto.action,
+        actorId,
+        comment: dto.comment,
       });
     }
 

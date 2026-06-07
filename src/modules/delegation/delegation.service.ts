@@ -8,10 +8,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateDelegationDto } from './dto/create-delegation.dto';
 import { UpdateDelegationDto } from './dto/update-delegation.dto';
 import { Role } from '@prisma/client';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class DelegationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async create(userId: string, userRole: string, dto: CreateDelegationDto) {
     // Permission check: regular user can only delegate their own work
@@ -65,7 +69,7 @@ export class DelegationService {
       }
     }
 
-    return this.prisma.delegation.create({
+    const delegation = await this.prisma.delegation.create({
       data: {
         tenantId: fromUser.tenantId,
         fromUserId: dto.fromUserId,
@@ -77,6 +81,21 @@ export class DelegationService {
         workflowDefinitionIds: dto.workflowDefinitionIds ?? [],
       },
     });
+
+    // Thông báo cho người được ủy quyền — lỗi thông báo không chặn việc tạo
+    this.notificationService
+      .notifyDelegationCreated({
+        delegationId: delegation.id,
+        fromUserId: delegation.fromUserId,
+        toUserId: delegation.toUserId,
+        startDate: delegation.startDate,
+        endDate: delegation.endDate,
+        formCount: delegation.formIds.length,
+        workflowCount: delegation.workflowDefinitionIds.length,
+      })
+      .catch(() => undefined);
+
+    return delegation;
   }
 
   async findAll(
