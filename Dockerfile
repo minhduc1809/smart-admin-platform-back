@@ -28,7 +28,8 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/i18n ./i18n
 COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/tsconfig.json ./
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node scripts/create-admin.js && node dist/main"]
+CMD ["sh", "-c", "npx prisma migrate deploy && npx ts-node prisma/seed-company-data.ts && node dist/main"]
